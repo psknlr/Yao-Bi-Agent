@@ -51,19 +51,38 @@ STATE_QUESTION_KEYS = {
 
 MAX_FOLLOWUPS_PER_STATE = 3
 
+# Per-state override defaults (can be further overridden at session level)
+DEFAULT_STATE_MAX_FOLLOWUPS: dict[str, int] = {
+    "S1_REDFLAG": 1,   # Red flag screening: only 1 round (all 6 questions asked at once)
+    "S2_BASIC": 2,     # Basic info: 2 rounds usually sufficient
+    "S6_SHEN_SIGNAL": 3,
+    "S8_ADAPTIVE_REPAIR": 3,
+}
+
 
 @dataclass
 class CaseGuideSession:
     state: str = "S0_CONSENT"
     case_state: dict[str, Any] | None = None
     max_followups_per_state: int = MAX_FOLLOWUPS_PER_STATE
+    # Per-state override: e.g. {"S1_REDFLAG": 1, "S5_TCM_CORE": 4}
+    state_max_followups: dict[str, int] | None = None
     use_llm_questions: bool = False
     dao_client: DaoClient | None = None
 
     def __post_init__(self) -> None:
         if self.case_state is None:
             self.case_state = empty_case_state()
+        if self.state_max_followups is None:
+            self.state_max_followups = dict(DEFAULT_STATE_MAX_FOLLOWUPS)
         self.case_state.setdefault("fsm", {"state_turn_counts": {}, "last_answers": {}, "last_question_ids": []})
+
+    def effective_max_followups(self, state: str) -> int:
+        """Return the effective max followups for a specific state.
+
+        Priority: per-state override > global max_followups_per_state.
+        """
+        return (self.state_max_followups or {}).get(state, self.max_followups_per_state)
 
     def start(self, raw_input: str = "", user_role: str = "patient") -> dict[str, Any]:
         consent = consent_privacy_skill(user_role=user_role, raw_input=raw_input)
@@ -109,16 +128,33 @@ class CaseGuideSession:
             self._advance_state()
         return {"state": self.state, "case_state": self.case_state, **self._question_payload()}
 
-    def end_current_state(self) -> dict[str, Any]:
-        """Manual user action: stop asking within the current state and advance."""
+    def end_current_state(self, force: bool = False) -> dict[str, Any]:
+        """Manual user action: stop asking within the current state and advance.
 
-        if self.state == "S1_REDFLAG":
+        Args:
+            force: If True, bypass the red-flag guard (used by auto-terminate when
+                   pool is exhausted but red flags are all answered as 'safe').
+        """
+        if self.state == "S1_REDFLAG" and not force:
             red_status = self.case_state.get("red_flags", {}).get("status")
             unanswered_red_flags = bool(self._deterministic_next_questions())
             if red_status == "urgent" or unanswered_red_flags:
-                return {"state": self.state, "case_state": self.case_state, **self._question_payload(), "manual_end_accepted": False}
+                return {
+                    "state": self.state,
+                    "case_state": self.case_state,
+                    **self._question_payload(),
+                    "manual_end_accepted": False,
+                    "reason": "红旗状态：危险信号仍有未回答项或已触发紧急就医，无法跳过。",
+                }
+        prev_state = self.state
         self._advance_state()
-        return {"state": self.state, "case_state": self.case_state, **self._question_payload(), "manual_end_accepted": True}
+        return {
+            "state": self.state,
+            "prev_state": prev_state,
+            "case_state": self.case_state,
+            **self._question_payload(),
+            "manual_end_accepted": True,
+        }
 
     def next_questions(self, max_questions: int = 3) -> list[dict[str, Any]]:
         deterministic = self._deterministic_next_questions(max_questions)
@@ -185,13 +221,21 @@ class CaseGuideSession:
         return {"state": self.state, "case_state": self.case_state, "shen_signals": shen["shen_signals"], "high_value_missing": shen["high_value_missing"], **quality, **routed, **formula, **modules, "safety": safety, **structured, **handoff, **review_package, **cdss}
 
     def _question_payload(self) -> dict[str, Any]:
+        effective_max = self.effective_max_followups(self.state)
+        turn_index    = self._current_turn_count()
+        remaining     = max(0, effective_max - turn_index)
+        pool_exhausted = not bool(self._deterministic_next_questions())
+        at_limit       = self._state_turn_limit_reached(self.state)
         return {
             "next_questions": self.next_questions(),
             "fsm": {
                 "state_goal": STATES.get(self.state, {}).get("goal"),
-                "turn_index": self._current_turn_count(),
-                "max_followups_per_state": self.max_followups_per_state,
-                "remaining_followups": max(0, self.max_followups_per_state - self._current_turn_count()),
+                "turn_index": turn_index,
+                "max_followups_per_state": effective_max,
+                "remaining_followups": remaining,
+                "pool_exhausted": pool_exhausted,
+                "at_limit": at_limit,
+                "auto_advance_ready": pool_exhausted or at_limit,
                 "can_end_state": self.state in STATES and self.state not in {"S0_CONSENT", "S_EMERGENCY_NOTICE", "S10_FINAL_REPORT"},
                 "rule_context": self.current_rule_context(),
                 "last_answers": self.case_state.get("fsm", {}).get("last_answers", {}).get(self.state, {}),
@@ -231,7 +275,7 @@ class CaseGuideSession:
         return int(self.case_state.get("fsm", {}).get("state_turn_counts", {}).get(self.state, 0))
 
     def _state_turn_limit_reached(self, state: str) -> bool:
-        return int(self.case_state.get("fsm", {}).get("state_turn_counts", {}).get(state, 0)) >= self.max_followups_per_state
+        return int(self.case_state.get("fsm", {}).get("state_turn_counts", {}).get(state, 0)) >= self.effective_max_followups(state)
 
     def _state_questions(self, state: str) -> list[dict[str, Any]]:
         key = STATE_QUESTION_KEYS.get(state)
@@ -254,7 +298,7 @@ class CaseGuideSession:
         enriched = dict(question)
         enriched["state"] = self.state
         enriched["state_turn_index"] = self._current_turn_count() + 1
-        enriched["max_followups_per_state"] = self.max_followups_per_state
+        enriched["max_followups_per_state"] = self.effective_max_followups(self.state)
         enriched["reason"] = reason or self._question_reason(question)
         enriched["rule_context"] = self.current_rule_context()
         return enriched

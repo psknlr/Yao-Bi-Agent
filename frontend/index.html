@@ -8,6 +8,7 @@
   </head>
   <body>
     <div class="app-shell">
+      <!-- ── Left Sidebar ── -->
       <aside class="sidebar" aria-label="流程导航">
         <div class="brand">
           <div class="brand-mark">腰</div>
@@ -16,19 +17,24 @@
             <h1>腰痹医案导引</h1>
           </div>
         </div>
+
         <div class="mode-card">
           <span class="status-dot"></span>
           <div>
             <strong>research_education_clinician_review_only</strong>
             <p>规则优先 · 证据可追溯 · 医师审核 · 非患者自用</p>
+            <p id="fsmConfigDisplay" style="color:var(--brand);font-size:12px;margin-top:4px;">全局追问上限：3 轮 · 规则模式</p>
           </div>
         </div>
+
         <nav id="stepper" class="stepper"></nav>
+
         <section class="integration-card" aria-label="全功能集成">
           <h3>全功能集成</h3>
           <ul>
             <li>CaseGuide FSM 自动问诊</li>
             <li>规则引擎 / 标签 / 证型 / 方剂路线</li>
+            <li>追问轮数可配置（全局/各状态）</li>
             <li>Tao Direct Transformers Runtime</li>
             <li>JSON Repair + Output Guard</li>
             <li>CDSS 草案 + 医师审核签名</li>
@@ -37,6 +43,7 @@
         </section>
       </aside>
 
+      <!-- ── Main Panel ── -->
       <main class="main-panel">
         <header class="topbar">
           <div>
@@ -44,6 +51,7 @@
             <h2 id="pageTitle">自动导引患者生成标准腰痹医案</h2>
           </div>
           <div class="topbar-actions">
+            <button id="settingsBtn"   class="ghost-btn" type="button">⚙ 问诊配置</button>
             <button id="doctorModeBtn" class="ghost-btn" type="button">医生/研究者模式</button>
             <button id="exportJsonBtn" class="primary-btn" type="button">导出 JSON</button>
           </div>
@@ -52,6 +60,7 @@
         <section id="screen" class="screen" aria-live="polite"></section>
       </main>
 
+      <!-- ── Right Sidebar ── -->
       <aside class="case-sidebar" aria-label="实时医案侧栏">
         <div class="quality-card">
           <div class="quality-ring" id="qualityRing">0%</div>
@@ -68,10 +77,22 @@
             <span id="autosaveBadge">本地暂存</span>
           </div>
           <dl class="case-preview">
-            <dt>主诉</dt><dd id="previewChief">未采集</dd>
-            <dt>现病史</dt><dd id="previewHistory">未生成</dd>
-            <dt>关键标签</dt><dd id="previewTags">暂无</dd>
-            <dt>缺失信息</dt><dd id="previewMissing">红旗、病程、疼痛、舌脉、用药</dd>
+            <dt>主诉</dt>       <dd id="previewChief">未采集</dd>
+            <dt>现病史</dt>     <dd id="previewHistory">未生成</dd>
+            <dt>关键标签</dt>   <dd id="previewTags">暂无</dd>
+            <dt>缺失信息</dt>   <dd id="previewMissing">红旗、病程、疼痛、舌脉、用药</dd>
+          </dl>
+        </section>
+
+        <!-- Shen rule signals live panel -->
+        <section class="live-card shen-signal-card">
+          <div class="card-heading">
+            <h3>沈老规则信号</h3>
+            <span class="eyebrow">实时</span>
+          </div>
+          <dl class="case-preview">
+            <dt>命中信号</dt>
+            <dd id="previewSignals">暂无信号命中</dd>
           </dl>
         </section>
 
@@ -87,6 +108,7 @@
       </aside>
     </div>
 
+    <!-- ── Question Card Template ── -->
     <template id="questionTemplate">
       <article class="question-card">
         <div class="question-meta"></div>
