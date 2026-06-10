@@ -1,71 +1,420 @@
+# 方剂辨证规则 - 基于沈钦荣医师209例腰痹医案统计
+# 数据来源：实际病案分析，总计209例
+# 方剂频次：当归四逆汤类(47), 独活寄生汤类(34), 桂枝芍药知母汤类(30), 柴胡类方(30)
+# 触发逻辑：all = 全部满足；any = 任一满足；at_least = 至少N个满足
+
 - id: F001
-  name: 独活寄生汤路线
+  name: 独活寄生汤
+  category: formula
+  priority: 88
+  # 适用：高龄、久病、骨质疏松、肝肾不足
+  trigger:
+    any:
+      - syndrome_肝肾不足证
+      - syndrome_气血不足证
+    at_least:
+      count: 2
+      tags:
+        - elderly
+        - osteoporosis
+        - chronic_yabi
+        - lumbar_leg_pain
+  core_herbs:
+    - herb: 独活
+      dose: 15g
+    - herb: 桑寄生
+      dose: 15-30g
+      note: 高龄患者可用至30g
+    - herb: 秦艽
+      dose: 10g
+    - herb: 防风
+      dose: 10g
+    - herb: 杜仲
+      dose: 12g
+    - herb: 川牛膝
+      dose: 15g
+    - herb: 熟地黄
+      dose: 10g
+    - herb: 当归
+      dose: 10g
+    - herb: 白芍
+      dose: 15g
+    - herb: 川芎
+      dose: 10g
+    - herb: 细辛
+      dose: 3g
+      note: 最大用量3g，不可超量
+    - herb: 茯苓
+      dose: 30g
+    - herb: 白术
+      dose: 30g
+    - herb: 党参
+      dose: 15g
+    - herb: 炙甘草
+      dose: 6g
+  activated_modules:
+    - liver_kidney_bone
+    - wind_damp_channel
+    - spleen_damp_core
+    - qi_blood_replenish
+  compatible_syndromes:
+    - 肝肾不足证
+    - 气血不足证
+    - 气血痹阻证
+  rationale: >
+    独活寄生汤为肝肾不足、风寒湿痹之经典方，本院使用34例次。
+    高龄患者（≥73岁）当归使用率74%、杜仲59%、熟地黄48%，
+    提示补肾扶正为治疗核心。桑寄生剂量可根据病情加至30g。
+  safety_level: standard
+  contraindications:
+    - yellow_greasy_coating
+    - hot_pain
+
+- id: F002
+  name: 当归四逆汤
+  category: formula
+  priority: 92
+  # 最常用方（47例），适用：麻木+放射痛+四末厥冷
+  trigger:
+    all:
+      - lower_limb_numbness
+    any:
+      - radiating_leg_pain
+      - cold_extremities
+  core_herbs:
+    - herb: 当归
+      dose: 10g
+      note: 麻木+放射痛时使用率58%
+    - herb: 桂枝
+      dose: 10g
+      note: 麻木+放射痛时使用率51%
+    - herb: 细辛
+      dose: 3g
+      note: 最大用量3g，不可超量
+    - herb: 通草
+      dose: 10g
+    - herb: 白芍
+      dose: 15g
+    - herb: 大枣
+      dose: 10g
+    - herb: 炙甘草
+      dose: 15g
+  activated_modules:
+    - guizhi_shaoyao_pain
+    - warm_yang_cold
+    - blood_stasis
+  compatible_syndromes:
+    - 气血痹阻证
+    - 寒湿痹阻证
+    - 肾阳不足证
+  rationale: >
+    当归四逆汤为本院最常用方（47例次）。统计显示麻木合并放射痛时，
+    当归使用率58%、桂枝51%、细辛为核心温经散寒药。
+    四末厥冷为阳气不达四末，寒凝血滞，此方温经养血通脉。
+  safety_level: standard
+  contraindications:
+    - yellow_greasy_coating
+    - hot_pain
+
+- id: F003
+  name: 桂枝芍药知母汤
+  category: formula
+  priority: 85
+  # 使用30例，适用：寒热错杂、关节僵硬、历节风
+  trigger:
+    at_least:
+      count: 2
+      tags:
+        - cold_aggravation
+        - joint_swelling
+        - damp_heavy
+        - lower_limb_numbness
+    any:
+      - syndrome_气血痹阻证
+      - syndrome_寒湿痹阻证
+  core_herbs:
+    - herb: 桂枝
+      dose: 10g
+    - herb: 白芍
+      dose: 20g
+      note: 较常规剂量偏大，缓急止痛
+    - herb: 知母
+      dose: 20g
+      note: 清热制约附片燥性
+    - herb: 麻黄
+      dose: 10g
+      note: 宣散外邪
+    - herb: 附片
+      dose: 10g
+      note: 先煎30-60分钟，必须先煎
+      special: 先煎
+    - herb: 防风
+      dose: 10g
+    - herb: 白术
+      dose: 30g
+    - herb: 生姜
+      dose: 10g
+    - herb: 甘草
+      dose: 6g
+  activated_modules:
+    - warm_yang_cold
+    - spleen_damp_core
+    - guizhi_shaoyao_pain
+    - wind_damp_channel
+  compatible_syndromes:
+    - 气血痹阻证
+    - 寒湿痹阻证
+    - 肾阳不足证
+  rationale: >
+    桂枝芍药知母汤为治历节风之经典方（使用30例次），适用于寒热错杂、
+    关节肿痛变形、痹证日久。知母与附片相配，温阳而不助热，
+    白术30g健脾化湿为沈老用药特色。
+  safety_level: caution
+  safety_note: 附片必须先煎30-60分钟，含麻黄需注意心率血压
+  contraindications:
+    - yellow_greasy_coating
+
+- id: F004
+  name: 柴胡类方
   category: formula
   priority: 80
+  # 使用30例，适用：少阳气郁、年轻+口苦+失眠
   trigger:
-    any: [elderly, chronic_yabi, osteoporosis, lumbar_leg_pain, ganshen_buzu]
-  effect:
-    formula_route: 独活寄生汤加减
-    route_score: 5
-    core_module: [独活, 桑寄生, 秦艽, 防风, 杜仲, 牛膝, 熟地黄, 细辛]
-  rationale: 适用于老年、久病、肝肾亏虚、慢性腰腿痛经验路线。
-- id: F002
-  name: 当归四逆汤路线
-  category: formula
-  priority: 75
-  trigger:
-    any: [lower_limb_numbness, radiating_leg_pain, cold_extremities, cold_aversion]
-    at_least: 2
-  effect:
-    formula_route: 当归四逆汤加减
-    route_score: 5
-    core_module: [当归, 桂枝, 细辛, 通草, 白芍, 大枣, 甘草]
-  rationale: 用于血虚寒凝、下肢麻木、放射痛的经验线索解释。
-- id: F003
-  name: 黄芪桂枝五物汤路线
-  category: formula
-  priority: 70
-  trigger:
-    all: [lower_limb_numbness]
-    any: [fatigue, qi_deficiency, limb_weakness]
-  effect:
-    formula_route: 黄芪桂枝五物汤加减
-    route_score: 4
-    core_module: [黄芪, 桂枝, 白芍, 通草, 当归, 大枣]
-  rationale: 气血不足、肢体麻木无力的经验路线。
-- id: F004
-  name: 桂枝芍药知母汤路线
+    any:
+      - syndrome_少阳气郁证
+    at_least:
+      count: 2
+      tags:
+        - bitter_taste
+        - insomnia
+        - young_patient
+  core_herbs:
+    - herb: 北柴胡
+      dose: 5-10g
+      note: 年轻患者（≤40岁）使用率47%，剂量视郁热程度调整
+    - herb: 黄芩
+      dose: 6g
+    - herb: 党参
+      dose: 15g
+    - herb: 姜半夏
+      dose: 6g
+    - herb: 炒芥子
+      dose: 10g
+      note: 年轻患者使用率41%，化痰散结
+    - herb: 当归
+      dose: 10g
+    - herb: 桂枝
+      dose: 10g
+    - herb: 大枣
+      dose: 10g
+    - herb: 炙甘草
+      dose: 6g
+  activated_modules:
+    - shaoyang_heat_phlegm
+    - sleep_calm
+    - stomach_protection
+    - guizhi_shaoyao_pain
+  compatible_syndromes:
+    - 少阳气郁证
+    - 温胆痰热证
+  rationale: >
+    柴胡类方使用30例次，年轻患者（≤40岁）中柴胡使用率47%、
+    炒芥子41%，体现少阳气郁兼痰的特点。和解少阳、疏肝解郁，
+    兼调气血。桂枝10g合当归10g温通血脉，防郁久化寒。
+  safety_level: standard
+  contraindications:
+    - cold_extremities
+    - kidney_yang_deficiency_severe
+
+- id: F005
+  name: 温胆汤类
   category: formula
   priority: 72
+  # 适用：口苦+失眠+苔腻+痰热内扰
   trigger:
-    any: [cold_damp_obstruction, heavy_lower_limb, white_greasy_coating, cold_aversion, joint_stiffness]
-    at_least: 2
-  effect:
-    formula_route: 桂枝芍药知母汤加减
-    route_score: 5
-    core_module: [桂枝, 白芍, 知母, 麻黄, 附片, 防风, 白术]
-  rationale: 寒湿痹阻、下肢沉重、苔腻、活动不利的经验路线。
-- id: F005
-  name: 柴胡类方路线
-  category: formula
-  priority: 68
-  trigger:
-    any: [bitter_taste, dry_mouth, emotional_constraint, insomnia, young_patient]
-    at_least: 2
-  effect:
-    formula_route: 柴胡类方加减
-    route_score: 4
-    core_module: [柴胡, 黄芩, 姜半夏, 桂枝, 白芍, 炒芥子]
-  rationale: 少阳气郁、口苦、情志不畅、睡眠差的经验路线。
+    at_least:
+      count: 3
+      tags:
+        - bitter_taste
+        - insomnia
+        - white_greasy_coating
+        - yellow_greasy_coating
+        - damp_heavy
+    any:
+      - syndrome_温胆痰热证
+  core_herbs:
+    - herb: 竹茹
+      dose: 10g
+      note: 温胆痰热证使用率100%
+    - herb: 栀子
+      dose: 10g
+      note: 温胆痰热证使用率100%
+    - herb: 炒芥子
+      dose: 10g
+      note: 温胆痰热证使用率100%
+    - herb: 茯苓
+      dose: 30g
+    - herb: 陈皮
+      dose: 6g
+    - herb: 姜半夏
+      dose: 6g
+    - herb: 甘草
+      dose: 6g
+    - herb: 枳实
+      dose: 10g
+  activated_modules:
+    - sleep_calm
+    - shaoyang_heat_phlegm
+    - stomach_protection
+    - spleen_damp_core
+  compatible_syndromes:
+    - 温胆痰热证
+    - 少阳气郁证
+  rationale: >
+    温胆汤主治痰热内扰、心神不宁。统计显示竹茹、栀子、炒芥子
+    在温胆痰热证中使用率均为100%，为绝对核心药物。
+    口苦+失眠+苔腻为主要辨证指标，以清胆和胃、化痰安神为法。
+  safety_level: standard
+
 - id: F006
-  name: 补肾类方路线
+  name: 补肾类方
   category: formula
-  priority: 74
+  priority: 75
+  # 适用：高龄（≥73岁）、肾虚为本
   trigger:
-    any: [kidney_yang_deficiency, osteoporosis, chronic_yabi, elderly, lumbar_knee_soreness]
-    at_least: 2
-  effect:
-    formula_route: 补肾类方
-    route_score: 4
-    core_module: [熟地黄, 山茱萸, 山药, 杜仲, 巴戟天, 菟丝子, 续断, 附片]
-  rationale: 肝肾不足、肾阳不足、骨质疏松、久病腰痛的经验路线。
+    any:
+      - very_elderly
+      - syndrome_肾阳不足证
+      - syndrome_肝肾不足证
+  core_herbs:
+    - herb: 熟地黄
+      dose: 10-15g
+      note: 高龄患者（≥73岁）使用率48%
+    - herb: 蒸萸肉
+      dose: 10g
+    - herb: 茯苓
+      dose: 30g
+    - herb: 泽泻
+      dose: 10g
+    - herb: 牡丹皮
+      dose: 10g
+    - herb: 山药
+      dose: 15g
+    - herb: 杜仲
+      dose: 12g
+      note: 高龄患者使用率59%
+    - herb: 续断
+      dose: 15g
+    - herb: 陈皮
+      dose: 6g
+      note: 高龄患者使用率52%，顾护脾胃
+  activated_modules:
+    - kidney_yang_tonify
+    - liver_kidney_bone
+    - stomach_protection
+    - qi_blood_replenish
+  compatible_syndromes:
+    - 肾阳不足证
+    - 肝肾不足证
+    - 气血不足证
+  rationale: >
+    高龄患者（≥73岁）统计显示：当归74%、杜仲59%、熟地黄48%、
+    陈皮52%，呈现补肾扶正为主的用药特色。六味地黄丸合杜仲、
+    续断补肾填精，陈皮顾护中焦防滋腻碍胃。
+  safety_level: standard
+
+- id: F007
+  name: 黄芪桂枝五物汤
+  category: formula
+  priority: 70
+  # 适用：气虚+肢体麻木、营卫不和
+  trigger:
+    all:
+      - lower_limb_numbness
+    any:
+      - syndrome_气血不足证
+      - syndrome_气血痹阻证
+    at_least:
+      count: 1
+      tags:
+        - elderly
+        - chronic_yabi
+  core_herbs:
+    - herb: 黄芪
+      dose: 30g
+      note: 沈老常用剂量30g，益气固表
+    - herb: 桂枝
+      dose: 10g
+    - herb: 白芍
+      dose: 15g
+    - herb: 通草
+      dose: 10g
+    - herb: 当归
+      dose: 10g
+    - herb: 大枣
+      dose: 10g
+    - herb: 生姜
+      dose: 6g
+  activated_modules:
+    - qi_blood_replenish
+    - guizhi_shaoyao_pain
+    - blood_stasis
+  compatible_syndromes:
+    - 气血不足证
+    - 气血痹阻证
+  rationale: >
+    黄芪桂枝五物汤主治血痹、肢体麻木，以黄芪30g益气为君，
+    桂枝温通经脉，当归养血活血。适用于气血不足兼有麻木者，
+    气虚为本，血痹为标，标本兼治。
+  safety_level: standard
+
+- id: F008
+  name: 健脾通络方
+  category: formula
+  priority: 65
+  # 适用：脾虚+经络不通、湿邪内生
+  trigger:
+    any:
+      - syndrome_脾虚不运证
+    at_least:
+      count: 2
+      tags:
+        - poor_appetite
+        - teeth_marks
+        - damp_heavy
+        - white_greasy_coating
+        - lower_limb_numbness
+  core_herbs:
+    - herb: 白术
+      dose: 30g
+      note: 沈老健脾化湿核心剂量
+    - herb: 茯苓
+      dose: 30g
+    - herb: 党参
+      dose: 15g
+    - herb: 陈皮
+      dose: 6g
+    - herb: 独活
+      dose: 15g
+    - herb: 桑寄生
+      dose: 30g
+    - herb: 全蝎
+      dose: 3g
+      note: 搜风通络，需医师审核
+      special: 需审核
+    - herb: 甘草
+      dose: 6g
+  activated_modules:
+    - spleen_damp_core
+    - wind_damp_channel
+    - insect_channel
+    - stomach_protection
+  compatible_syndromes:
+    - 脾虚不运证
+    - 气血痹阻证
+  rationale: >
+    脾虚不运致湿邪内生，经络痹阻。白术30g、茯苓30g健脾化湿，
+    独活寄生祛风通络，全蝎3g搜剔经络顽邪。
+    脾为后天之本，脾运健则湿邪化，经络自通。
+  safety_level: caution
+  safety_note: 全蝎为动物药，需确认无过敏史，使用需医师审核
