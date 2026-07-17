@@ -8,7 +8,7 @@
   effect:
     syndrome: 气血痹阻证
     score: 3
-    modules: [健脾化湿底盘, 桂枝芍药缓急模块]
+    modules: [健脾化湿底盘, 桂枝芍药缓急止痛模块]
   rationale: 舌暗、久痛、苔腻提示气血运行不畅兼湿阻。
   safety_level: low
 - id: R002
@@ -16,12 +16,12 @@
   category: syndrome
   priority: 80
   trigger:
-    any: [fixed_pain, strain_or_sprain, emotional_constraint, purple_tongue, stabbing_pain]
+    any: [fixed_pain, strain_or_sprain, emotional_constraint, purple_tongue, stabbing_pain, distending_pain]
     at_least: 2
   effect:
     syndrome: 气滞血瘀证
     score: 4
-    modules: [活血化瘀模块, 理气通络模块]
+    modules: [活血化瘀模块]
   rationale: 疼痛固定、刺痛、舌紫暗等提示瘀阻络脉。
   safety_level: low
 - id: R003
@@ -49,7 +49,7 @@
   effect:
     syndrome: 肾阳不足证
     score: 5
-    modules: [温阳散寒模块, 补肾助阳模块]
+    modules: [桂枝芍药缓急止痛模块, 补肝肾强筋骨模块]
   rationale: 畏寒、四肢冷、脉缓等提示阳虚寒凝线索。
   safety_level: medium
 - id: R005
@@ -107,6 +107,6 @@
   effect:
     syndrome: 寒湿痹阻证
     score: 4
-    modules: [健脾化湿底盘, 温阳散寒模块]
+    modules: [健脾化湿底盘, 独活寄生祛风湿模块]
   rationale: 苔白腻、遇冷/阴雨加重、得温则减、肢体困重提示寒湿痹阻经络。
   safety_level: low

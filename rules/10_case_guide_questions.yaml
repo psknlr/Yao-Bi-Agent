@@ -69,7 +69,7 @@ pain_questions:
     type: multi_choice
     options: [酸痛, 胀痛, 刺痛, 冷痛, 灼痛, 隐痛, 掣痛/牵拉痛, 麻痛, 说不清]
     tag_mapping:
-      冷痛: [cold_pain]
+      冷痛: [deep_cold_pain]
       刺痛: [stabbing_pain]
       胀痛: [distending_pain]
       麻痛: [lower_limb_numbness]
@@ -86,7 +86,7 @@ pain_questions:
     options: [久坐, 久站, 弯腰, 劳累, 受凉, 阴雨天, 走路, 咳嗽打喷嚏, 夜间, 没有明显规律]
     tag_mapping:
       受凉: [cold_aggravation]
-      阴雨天: [damp_weather_aggravation]
+      阴雨天: [cold_aggravation, dampness]
       咳嗽打喷嚏: [nerve_root_irritation_possible]
   - id: P006
     stage: pain_profile
@@ -152,7 +152,7 @@ tcm_four_diagnosis_questions:
     options: [遇冷加重，热敷舒服, 热敷不舒服, 没影响, 不确定]
     tag_mapping:
       遇冷加重，热敷舒服: [cold_aggravation, warmth_relieves, cold_damp_signal]
-      热敷不舒服: [possible_heat_pattern]
+      热敷不舒服: [heat_aggravation]
   - id: T003
     stage: tcm_core
     field: tcm_inquiry.cold_extremities

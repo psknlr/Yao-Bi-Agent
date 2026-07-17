@@ -42,19 +42,19 @@ herb_drug_interactions:
     alert_level: interruptive
   - id: nsaid_x_gancao
     herbs: [甘草]
-    drugs: [塞来昔布, 布洛芬, 双氯芬酸]
+    drugs: [塞来昔布, 布洛芬, 双氯芬酸, 艾瑞昔布, 依托考昔]
     meaning: 甘草酸致假性醛固酮增多（水钠潴留、血压升高、低血钾），与NSAIDs的水钠潴留及血压影响叠加，需医师审核。
     action: monitor_bp_potassium_and_document
     alert_level: advisory
   - id: nsaid_x_huoxue_herbs
     herbs: [丹参, 川芎, 桃仁, 红花, 赤芍]
-    drugs: [塞来昔布, 布洛芬, 双氯芬酸]
+    drugs: [塞来昔布, 布洛芬, 双氯芬酸, 艾瑞昔布, 依托考昔]
     meaning: NSAIDs损伤胃黏膜并抑制血小板功能，与活血化瘀药叠加可增加消化道出血风险，需医师审核。
     action: monitor_gi_bleeding_and_document
     alert_level: advisory
   - id: glucocorticoid_x_gancao
     herbs: [甘草]
-    drugs: [泼尼松]
+    drugs: [泼尼松, 地塞米松, 甲泼尼龙, 氢化可的松]
     meaning: 甘草酸抑制11β-羟基类固醇脱氢酶，减慢糖皮质激素灭活并延长其作用，且水钠潴留与低血钾风险叠加，需医师审核。
     action: monitor_bp_potassium_and_document
     alert_level: advisory
@@ -62,19 +62,19 @@ herb_drug_interactions:
 comorbidity_contraindications:
   - id: mahuang_x_hypertension_cardiac
     herbs: [麻黄]
-    conditions: [高血压, 心脏病, 冠心病, 心律失常]
+    conditions: [高血压, 心脏病, 冠心病, 心律失常, 心衰, 心力衰竭]
     meaning: 麻黄碱拟交感作用可升高血压、加快心率并诱发心律失常，高血压及心脏病患者不宜使用，需医师审核并显式确认。
     action: remove_or_replace_herb_and_require_physician_signoff
     alert_level: interruptive
   - id: fupian_xixin_x_cardiac
     herbs: [附片, 细辛]
-    conditions: [心律失常, 心脏病]
+    conditions: [心律失常, 心脏病, 冠心病, 心衰, 心力衰竭]
     meaning: 乌头碱类与细辛挥发油具心脏毒性，可诱发室性心律失常，心脏基础疾病患者风险放大，需医师审核并显式确认。
     action: remove_or_replace_herb_and_require_physician_signoff
     alert_level: interruptive
   - id: toxic_herbs_x_hepatorenal_insufficiency
     herbs: [附片, 细辛, 蜈蚣, 全蝎]
-    conditions: [肝功能不全, 肾功能不全]
+    conditions: [肝功能不全, 肾功能不全, 肝功能异常, 肾功能异常, 肝硬化, 尿毒症]
     meaning: 毒性成分依赖肝脏代谢与肾脏排泄，肝肾功能不全时易蓄积中毒，需医师审核并显式确认。
     action: remove_or_replace_herb_and_require_physician_signoff
     alert_level: interruptive

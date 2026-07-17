@@ -23,10 +23,17 @@ FORBIDDEN_PATTERNS = {
         r"水煎服",
         # Frequency instructions in Arabic or Chinese numerals: 每日2次 / 一日三次 / 每天三服 / 日3次.
         rf"[每一]?[日天]\s*[{_CHN_NUM}\d]+\s*[次服]",
+        # Solid-dose frequency ("每日三丸/一日两片/每天2粒/每日一袋") — the numeral+unit form
+        # that the 次/服 pattern above misses entirely.
+        rf"[每一][日天]\s*[{_CHN_NUM}\d]+\s*[丸片粒袋帖贴]",
         rf"分[{_CHN_NUM}\d]+次",
         # Colloquial regimen phrasings that dodge the numeral patterns:
         # 早晚各服一回 / 每日早晚各一次 / 照此煎服 / 依上述比例配齐 / 按常规量使用.
         rf"早晚各?服?[{_CHN_NUM}\d]*[次回]",
+        # Administration verbs that finish an executable regimen without a numeral
+        # ("早晚分服" / "睡前温服" / "空腹顿服" / "开水送服" / "黄酒冲服"), the bypass the
+        # numeral-anchored patterns above cannot see.
+        r"(?:早晚|晨昏|睡前|临睡|空腹|饭前|饭后|餐后|温开?水?|黄酒)?[^，。;；\n]{0,4}(?:分服|顿服|温服|送服|冲服|噙服|含服)",
         r"照此(?:执行|服用|煎服|用药)",
         r"依(?:上述|此)比例",
         r"按常规[量法]",
@@ -36,13 +43,18 @@ FORBIDDEN_PATTERNS = {
     "dose_instruction": [
         # Arabic-digit doses: 3g / 3 克 / 500mg / 3钱 (excludes alphabetic runs like "IgG4").
         r"\d+(?:\.\d+)?\s*(?:g(?![a-zA-Z])|克|mg(?![a-zA-Z])|毫克|钱)",
+        # Liquid / decoction volumes ("煎取400毫升" / "浓煎至150ml" / "取汁200毫升"): the
+        # standard patient-facing 汤剂 dosing unit, absent from the mass-only set above.
+        r"\d+(?:\.\d+)?\s*(?:毫升|ml(?![a-zA-Z])|mL|升)",
+        # Solid-form counts ("每次三丸" handled below; bare "三丸/两片/一袋" here).
+        rf"[{_CHN_NUM}\d]+\s*[丸片粒袋帖贴]",
         # Chinese-numeral doses: 三克 / 两钱 — the classic bypass of digit-only regexes.
         rf"[{_CHN_NUM}]+\s*[克钱]",
         r"先煎",
         r"后下",
         r"饭后服",
         # Per-dose instructions ("每次一袋/每次服6克"), not innocent phrases like "每次复诊".
-        rf"每次[^，。;；\n]{{0,6}}(?:\d|[{_CHN_NUM}]|服|克|丸|片|袋)",
+        rf"每次[^，。;；\n]{{0,6}}(?:\d|[{_CHN_NUM}]|服|克|丸|片|袋|毫升|ml)",
         # Classical hand-measure dosing ("以三指撮为度") — a dose instruction in disguise.
         r"[一二三]指撮",
     ],
@@ -102,8 +114,13 @@ _CLINICIAN_DRAFT_FORBIDDEN = [
     (r"最终诊断[为是：:]|明确诊断为|诊断明确为|确诊为|可以?确诊", "assertive_final_diagnosis"),
     (r"处方如下|完整处方|请按.*服用|按方抓药", "complete_prescription"),
     (
-        rf"水煎服|[每一][日天]\s*[{_CHN_NUM}\d]+\s*[次服]|分[{_CHN_NUM}\d]+次(?:服|口服)"
-        rf"|早晚各?服?[{_CHN_NUM}\d]*[次回]|照此(?:执行|服用|煎服|用药)|依(?:上述|此)比例|按常规[量法]",
+        rf"水煎服|[每一][日天]\s*[{_CHN_NUM}\d]+\s*[次服丸片粒袋帖贴]|分[{_CHN_NUM}\d]+次(?:服|口服)"
+        rf"|早晚各?服?[{_CHN_NUM}\d]*[次回]"
+        # Administration verbs that finish an executable regimen (early/evening split
+        # dose, bedtime warm dose, decoct-and-take): forbidden even in a teaching draft,
+        # while experience dose *ranges* (3-6g，医师审核) stay allowed above.
+        rf"|(?:早晚|晨昏|睡前|临睡|空腹|饭前|饭后|餐后|温开?水?|黄酒)?[^，。;；\n]{{0,4}}(?:分服|顿服|温服|送服|冲服|噙服|含服)"
+        rf"|照此(?:执行|服用|煎服|用药)|依(?:上述|此)比例|按常规[量法]",
         "executable_regimen",
     ),
 ]

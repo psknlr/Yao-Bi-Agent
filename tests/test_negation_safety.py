@@ -225,3 +225,36 @@ def test_filter_patient_payload_blocks_leaked_draft():
     assert "处方如下" not in filtered["answer"]
     assert "9g" not in filtered["answer"]
     assert filtered["medication_advice"] is None
+
+
+# ------------------------------------------------- guard bypass 语料回归（v0.15 加固）
+# Executable regimens that used to slip past the patient-floor guard because the dose
+# unit set was mass-only (g/克/mg/钱) and the frequency regex required a 次/服/回 suffix.
+# ml/丸/片 volumes and administration verbs (分服/顿服/温服/送服/冲服) are now covered.
+GUARD_BYPASS_PAYLOADS = [
+    "煎取400毫升，早晚分服",
+    "上方浓煎至150ml，睡前温服",
+    "每日三丸，温开水送服",
+    "每日两片，饭后服用",
+    "空腹顿服，黄酒冲服",
+    "本方每次一袋，一日两次",
+]
+
+
+@pytest.mark.parametrize("payload", GUARD_BYPASS_PAYLOADS)
+def test_patient_guard_blocks_executable_regimen_bypass(payload):
+    assert guard_tao_output(payload)["allowed"] is False, f"guard 漏检可执行医嘱: {payload}"
+
+
+# The guard must not over-block innocent patient-facing counsel (avoid excess fallback).
+GUARD_INNOCENT_TEXT = [
+    "这种情况通常一两天会缓解，注意休息",
+    "腰部两侧酸胀多与劳损有关，避免久坐",
+    "可以每次复诊时复查，观察变化",
+    "如夜间疼痛明显或伴发热，请尽快线下就诊",
+]
+
+
+@pytest.mark.parametrize("text", GUARD_INNOCENT_TEXT)
+def test_patient_guard_allows_innocent_counsel(text):
+    assert guard_tao_output(text)["allowed"] is True, f"guard 误杀正常科普: {text}"

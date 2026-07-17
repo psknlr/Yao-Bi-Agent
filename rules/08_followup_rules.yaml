@@ -1,18 +1,25 @@
+# Follow-up (复诊调整) rules. Trigger semantics are explicit (all / any), matching the
+# syndrome/formula rule files and evaluated by the shared engine.trigger_matches — a
+# bare tag list used to be read as "any tag matches", which fired the conjunctive
+# 痛减而麻存 rule on 痛减 alone (v0.15 fix). Module names must exist in 04_module_rules.
 followup_rules:
   - id: pain_improved
-    trigger: [pain_reduced, better_than_before]
+    trigger:
+      any: [pain_reduced, better_than_before]
     action:
       reduce: [桂枝, 细辛, 通草, 赤芍, 牡丹皮]
       keep_or_add: [白术, 丹参, 杜仲, 桑寄生, 党参]
     meaning: 痛减后由辛温开闭转向健脾补肾、养血通络。
   - id: numbness_remaining
-    trigger: [pain_reduced, numbness_remaining]
+    trigger:
+      all: [pain_reduced, numbness_remaining]
     action:
-      consider_modules: [虫类搜络模块, 益气通络模块]
-    meaning: 痛减而麻存，提示络闭未开。
+      consider_modules: [虫类搜络模块]
+    meaning: 痛减而麻存，提示络闭未开（须痛减与麻木并存方成立）。
   - id: stomach_worse
-    trigger: [poor_appetite, epigastric_discomfort, nausea]
+    trigger:
+      any: [poor_appetite, epigastric_discomfort, nausea]
     action:
       add_modules: [顾护中焦模块]
-      reduce_modules: [滋腻补肾模块, 辛温走窜模块]
-    meaning: 胃气为处方耐受性开关。
+      reduce_modules: [补肝肾强筋骨模块, 桂枝芍药缓急止痛模块]
+    meaning: 胃气为处方耐受性开关；胃气受损时减滋腻补肾与辛温走窜之品。
