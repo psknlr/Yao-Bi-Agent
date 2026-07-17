@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 RULES_DIR = ROOT / "rules"
 
 # Bump when the recommendation-relevant behaviour changes (kept in sync with pyproject.toml).
-APP_VERSION = "0.14.0"
+APP_VERSION = "0.15.0"
 
 _FINGERPRINT_CACHE: dict[str, Any] | None = None
 _FINGERPRINT_STAT_KEY: tuple | None = None

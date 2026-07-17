@@ -1,6 +1,6 @@
 [project]
 name = "yaobi-skill-agent"
-version = "0.14.0"
+version = "0.15.0"
 description = "Lightweight Skill + Hermes-style agent for Shen Qinrong YaoBi research rules"
 requires-python = ">=3.10"
 dependencies = ["pyyaml>=6.0"]

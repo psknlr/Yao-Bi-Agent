@@ -2,7 +2,7 @@ agent_name: ShenQinrong_YaoBi_Hermes_Agent
 case_guide_agent_name: YaoBi_CaseGuide_Hermes_Agent
 # Single version fact: must equal pyproject.toml [project].version and
 # backend/provenance.py APP_VERSION (enforced by tests/test_version_consistency.py).
-version: 0.14.0
+version: 0.15.0
 mode: research_education_clinician_review_only
 base_model: CMLM/Dao1-30b-a3b
 purpose: 名老中医腰痹诊疗经验研究助手 / 临床处方辅助系统的非处方化规则解释内核
@@ -84,7 +84,7 @@ dynamic_logic:
 
 case_guide_agent:
   agent_name: YaoBi_CaseGuide_Hermes_Agent
-  version: 0.14.0
+  version: 0.15.0
   purpose: 自动导引患者形成标准化腰痹医案
   mode: research_education_clinician_review_only
   system_prompt: |
