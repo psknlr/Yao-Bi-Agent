@@ -82,7 +82,7 @@ def test_dao_direct_chat_mock_and_transformers_source_contract():
     assert "AutoTokenizer.from_pretrained" in source
     assert "AutoModelForCausalLM.from_pretrained" in source
     assert "trust_remote_code=True" in source
-    assert "attn_implementation=self.config.attn_implementation" in source
+    assert '"attn_implementation": self.config.attn_implementation' in source
 
 
 def test_dao_from_env_reads_direct_transformers_knobs(monkeypatch):
@@ -97,8 +97,58 @@ def test_dao_from_env_reads_direct_transformers_knobs(monkeypatch):
     assert config.attn_implementation == "eager"
 
 
+def test_dao_from_env_reads_quantization_knobs(monkeypatch):
+    monkeypatch.setenv("TAO_LOAD_IN_4BIT", "true")
+    config = DaoGenerationConfig.from_env()
+    assert config.load_in_4bit is True
+    assert config.load_in_8bit is False
+    # Quantized loading (so the 30B MoE fits one GPU) is wired through BitsAndBytesConfig.
+    source = __import__("pathlib").Path("backend/llm/dao_client.py").read_text(encoding="utf-8")
+    assert "BitsAndBytesConfig" in source
+    assert "quantization_config" in source
+
+
 def test_dao_transformers_cache_is_configuration_aware():
     source = __import__("pathlib").Path("backend/llm/dao_client.py").read_text(encoding="utf-8")
     assert "_model_signature" in source
     assert "self.__class__._model_signature != signature" in source
     assert "self.__class__._model_signature = signature" in source
+
+
+def test_dao_load_status_reports_backend_lifecycle():
+    # mock/http need no local weights → ready; disabled → disabled (so /api/health can report it).
+    assert DaoClient(DaoGenerationConfig(backend="disabled")).load_status()["state"] == "disabled"
+    assert DaoClient(DaoGenerationConfig(backend="mock")).load_status()["state"] == "ready"
+    assert DaoClient(DaoGenerationConfig(backend="http")).load_status()["state"] == "ready"
+
+
+def test_dao_preload_mock_is_ready_and_disabled_is_reported():
+    assert DaoClient(DaoGenerationConfig(backend="mock")).preload()["ok"] is True
+    disabled = DaoClient(DaoGenerationConfig(backend="disabled")).preload()
+    assert disabled["ok"] is False
+    assert disabled["state"] == "disabled"
+
+
+def test_dao_preload_surfaces_transformers_load_failure_without_crashing(monkeypatch):
+    # A real load failure (e.g. an OOM-killed 30B FP16 load) must surface as a reported error,
+    # not an opaque crash — this is what lets the server stay up and report the real cause
+    # instead of leaving the warmup with "Connection refused". We monkeypatch the heavy loader
+    # so the test never downloads weights regardless of whether transformers is installed.
+    DaoClient._load_state = "idle"
+    DaoClient._load_error = None
+
+    def boom(self):
+        raise RuntimeError("CUDA out of memory")
+
+    monkeypatch.setattr(DaoClient, "_load_transformers_runtime", boom, raising=True)
+    client = DaoClient(DaoGenerationConfig(backend="transformers"))
+    status = client.preload()
+    assert status["ok"] is False
+    assert status["state"] == "error"
+    assert "CUDA out of memory" in status["reason"]
+    after = client.load_status()
+    assert after["state"] == "error"
+    assert "CUDA out of memory" in (after["error"] or "")
+    # Reset shared class lifecycle so later tests reading transformers state aren't contaminated.
+    DaoClient._load_state = "idle"
+    DaoClient._load_error = None

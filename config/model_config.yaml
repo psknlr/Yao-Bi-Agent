@@ -1,10 +1,16 @@
 runtime:
   default_backend: disabled
-  supported_backends: [disabled, mock, http, transformers]
+  # http = generic OpenAI-compatible endpoint; poe/minimax/azure reuse the same wire
+  # path with provider defaults (endpoint, auth header, error surface) — see README.
+  supported_backends: [disabled, mock, http, poe, minimax, azure, transformers]
   env:
     backend: TAO_BACKEND
     endpoint_url: TAO_ENDPOINT_URL
-    api_key: TAO_API_KEY
+    api_key: TAO_API_KEY  # provider fallbacks: POE_API_KEY / MINIMAX_API_KEY / AZURE_OPENAI_API_KEY
+    azure_endpoint: AZURE_OPENAI_ENDPOINT
+    azure_deployment: TAO_AZURE_DEPLOYMENT  # fallback AZURE_OPENAI_DEPLOYMENT, else TAO_MODEL_ID
+    azure_api_version: TAO_AZURE_API_VERSION  # fallback AZURE_OPENAI_API_VERSION, default 2024-06-01; "v1" selects the /openai/v1 surface
+    egress_allowed_hosts: YAOBI_EGRESS_ALLOWED_HOSTS  # optional comma-separated host allowlist; HTTPS enforced for non-local endpoints
     torch_dtype: TAO_TORCH_DTYPE
     device_map: TAO_DEVICE_MAP
     attn_implementation: TAO_ATTN_IMPLEMENTATION
@@ -35,7 +41,7 @@ inference_profiles:
     temperature: 0.3
     top_p: 0.85
     repetition_penalty: 1.1
-    max_new_tokens: 2048
+    max_new_tokens: 3072
     do_sample: true
   teaching_explanation:
     temperature: 0.6

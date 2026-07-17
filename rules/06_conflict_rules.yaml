@@ -1,16 +1,98 @@
+# alert_level semantics (alert-fatigue tiering):
+#   interruptive — must be explicitly acknowledged by a physician before the
+#                  draft can proceed; advisory — passive note in the review UI.
 conflicts:
   - id: duhuo_vs_guizhi_zhimu
     group_a: [独活, 桑寄生, 秦艽, 防风]
     group_b: [知母, 麻黄, 附片]
     meaning: 独活寄生路线偏补益祛风湿，桂枝芍药知母路线偏温散寒湿，二者一般不完整叠加。
     action: ask_agent_to_choose_primary_route
+    alert_level: advisory
   - id: heavy_stasis_vs_duhuo
     group_a: [桃仁, 赤芍, 红花]
     group_b: [独活, 桑寄生, 秦艽]
     meaning: 活血重剂与独活寄生补益风药不宜无原则堆叠。
     action: require_rationale
+    alert_level: advisory
   - id: baizhu_vs_fried_baizhu
     group_a: [白术]
     group_b: [麸炒白术]
     meaning: 炮制替代关系，一般二选一。
     action: deduplicate
+    alert_level: advisory
+  - id: shibafan_wutou_banxia
+    group_a: [附片]
+    group_b: [半夏, 姜半夏]
+    meaning: 十八反：附片属乌头类，乌头反半夏，同用可增强乌头碱的心脏与神经毒性，属传统配伍禁忌，需医师审核并显式确认。
+    action: remove_one_and_require_physician_signoff
+    alert_level: interruptive
+
+herb_drug_interactions:
+  - id: anticoagulant_x_huoxue_herbs
+    herbs: [丹参, 川芎, 桃仁, 红花, 赤芍]
+    drugs: [华法林, 阿司匹林, 利伐沙班, 氯吡格雷]
+    meaning: 活血化瘀药抑制血小板聚集，丹参尚可抑制华法林代谢，与抗凝/抗血小板药叠加后出血风险显著升高，需医师审核并显式确认。
+    action: require_physician_acknowledgement
+    alert_level: interruptive
+  - id: anticoagulant_x_insect_herbs
+    herbs: [蜈蚣, 全蝎, 地龙]
+    drugs: [华法林, 阿司匹林, 利伐沙班, 氯吡格雷]
+    meaning: 虫类药含纤溶与抗栓活性成分（如地龙的蚓激酶样物质），可增强抗凝/抗血小板药的抗栓效应而致出血，需医师审核并显式确认。
+    action: require_physician_acknowledgement
+    alert_level: interruptive
+  - id: nsaid_x_gancao
+    herbs: [甘草]
+    drugs: [塞来昔布, 布洛芬, 双氯芬酸]
+    meaning: 甘草酸致假性醛固酮增多（水钠潴留、血压升高、低血钾），与NSAIDs的水钠潴留及血压影响叠加，需医师审核。
+    action: monitor_bp_potassium_and_document
+    alert_level: advisory
+  - id: nsaid_x_huoxue_herbs
+    herbs: [丹参, 川芎, 桃仁, 红花, 赤芍]
+    drugs: [塞来昔布, 布洛芬, 双氯芬酸]
+    meaning: NSAIDs损伤胃黏膜并抑制血小板功能，与活血化瘀药叠加可增加消化道出血风险，需医师审核。
+    action: monitor_gi_bleeding_and_document
+    alert_level: advisory
+  - id: glucocorticoid_x_gancao
+    herbs: [甘草]
+    drugs: [泼尼松]
+    meaning: 甘草酸抑制11β-羟基类固醇脱氢酶，减慢糖皮质激素灭活并延长其作用，且水钠潴留与低血钾风险叠加，需医师审核。
+    action: monitor_bp_potassium_and_document
+    alert_level: advisory
+
+comorbidity_contraindications:
+  - id: mahuang_x_hypertension_cardiac
+    herbs: [麻黄]
+    conditions: [高血压, 心脏病, 冠心病, 心律失常]
+    meaning: 麻黄碱拟交感作用可升高血压、加快心率并诱发心律失常，高血压及心脏病患者不宜使用，需医师审核并显式确认。
+    action: remove_or_replace_herb_and_require_physician_signoff
+    alert_level: interruptive
+  - id: fupian_xixin_x_cardiac
+    herbs: [附片, 细辛]
+    conditions: [心律失常, 心脏病]
+    meaning: 乌头碱类与细辛挥发油具心脏毒性，可诱发室性心律失常，心脏基础疾病患者风险放大，需医师审核并显式确认。
+    action: remove_or_replace_herb_and_require_physician_signoff
+    alert_level: interruptive
+  - id: toxic_herbs_x_hepatorenal_insufficiency
+    herbs: [附片, 细辛, 蜈蚣, 全蝎]
+    conditions: [肝功能不全, 肾功能不全]
+    meaning: 毒性成分依赖肝脏代谢与肾脏排泄，肝肾功能不全时易蓄积中毒，需医师审核并显式确认。
+    action: remove_or_replace_herb_and_require_physician_signoff
+    alert_level: interruptive
+  - id: pregnancy_contraindicated_herbs
+    herbs: [桃仁, 红花, 蜈蚣, 全蝎, 附片, 细辛, 麝香, 牛膝]
+    conditions: [妊娠, 怀孕]
+    meaning: 活血破血与毒性走窜之品可兴奋子宫或具胚胎毒性，属妊娠禁忌，需医师审核并显式确认。
+    action: remove_or_replace_herb_and_require_physician_signoff
+    alert_level: interruptive
+  - id: gancao_x_hypertension_edema_hypokalemia
+    herbs: [甘草]
+    conditions: [高血压, 水肿, 低血钾]
+    meaning: 长期或较大剂量甘草致假性醛固酮增多——水钠潴留、血压升高、低血钾，相关基础疾病者慎用，需医师审核。
+    action: limit_duration_and_monitor
+    alert_level: advisory
+  - id: huoxue_herbs_x_peptic_ulcer
+    herbs: [丹参, 川芎, 桃仁, 红花, 赤芍]
+    conditions: [消化性溃疡, 胃溃疡, 十二指肠溃疡]
+    meaning: 活血化瘀药的抗血小板作用可增加溃疡病灶出血风险，需医师审核。
+    action: monitor_gi_bleeding_and_document
+    alert_level: advisory

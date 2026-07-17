@@ -1,266 +1,112 @@
-# 证型辨识规则 - 基于沈钦荣医师209例腰痹医案统计
-# 数据来源：实际病案分析，总计209例
-# 优先级说明：数值越高越优先触发，范围50-100
-# 触发逻辑：all = 全部满足；any = 任一满足；at_least = 至少N个满足
-
 - id: R001
-  name: 气血痹阻证
+  name: 气血痹阻基础规则
   category: syndrome
-  priority: 95
-  # 占比66.5%，最常见证型
+  priority: 90
   trigger:
-    any:
-      - dark_tongue
-      - chronic_yabi
-      - lower_limb_numbness
-    at_least:
-      count: 2
-      tags:
-        - lumbar_leg_pain
-        - lower_limb_numbness
-        - chronic_yabi
-        - dark_tongue
+    any: [dark_tongue, chronic_yabi, lumbar_leg_pain, white_greasy_coating]
+    at_least: 2
   effect:
     syndrome: 气血痹阻证
-    score: 90
-    modules:
-      - blood_stasis
-      - wind_damp_channel
-      - guizhi_shaoyao_pain
-  rationale: >
-    气血痹阻为腰痹最常见证型（占66.5%）。舌暗提示血行不畅，久病入络，
-    麻木为气血不能濡养四末所致。以活血化瘀、祛风通络为主法。
-  safety_level: standard
-
+    score: 3
+    modules: [健脾化湿底盘, 桂枝芍药缓急模块]
+  rationale: 舌暗、久痛、苔腻提示气血运行不畅兼湿阻。
+  safety_level: low
 - id: R002
-  name: 气滞血瘀证
+  name: 气滞血瘀规则
   category: syndrome
-  priority: 88
-  # 占比14.4%，多见于年轻患者，疼痛固定
+  priority: 80
   trigger:
-    all:
-      - fixed_pain
-    any:
-      - stabbing_pain
-      - purple_tongue
-      - young_patient
+    any: [fixed_pain, strain_or_sprain, emotional_constraint, purple_tongue, stabbing_pain]
+    at_least: 2
   effect:
     syndrome: 气滞血瘀证
-    score: 85
-    modules:
-      - blood_stasis
-      - guizhi_shaoyao_pain
-  rationale: >
-    气滞血瘀证占14.4%，以固定刺痛、舌有赤点或紫暗为辨证要点。
-    年轻患者多因外伤或久坐致气机郁滞，血行不畅。治以行气活血、化瘀通络。
-  safety_level: standard
-
+    score: 4
+    modules: [活血化瘀模块, 理气通络模块]
+  rationale: 疼痛固定、刺痛、舌紫暗等提示瘀阻络脉。
+  safety_level: low
 - id: R003
-  name: 肝肾不足证
+  name: 肝肾不足规则
   category: syndrome
-  priority: 82
-  # 占比4.8%，高龄+骨质疏松+腰膝酸软
+  priority: 95
   trigger:
-    any:
-      - elderly
-      - osteoporosis
-    at_least:
-      count: 2
-      tags:
-        - elderly
-        - osteoporosis
-        - chronic_yabi
-        - lumbar_leg_pain
+    all: [elderly]
+    any: [chronic_yabi, osteoporosis, lumbar_knee_soreness, long_duration]
   effect:
     syndrome: 肝肾不足证
-    score: 80
-    modules:
-      - liver_kidney_bone
-      - qi_blood_replenish
-  rationale: >
-    肝肾不足证占4.8%，以高龄、骨质疏松、腰膝酸软为辨证要点。
-    肝主筋、肾主骨，肝肾亏虚则筋骨失养，腰膝痿软无力。
-    治以补益肝肾、强筋健骨为主，常用独活寄生汤化裁。
-  safety_level: standard
-
+    score: 5
+    modules: [补肝肾强筋骨模块]
+  rationale: 高龄、久病、骨质疏松提示肝肾亏虚、骨失所养。
+  safety_level: low
 - id: R004
-  name: 气血不足证
+  name: 肾阳不足规则
   category: syndrome
-  priority: 78
-  # 占比3.8%，高龄+消瘦+纳差+病程长
+  priority: 85
   trigger:
-    at_least:
-      count: 2
-      tags:
-        - elderly
-        - poor_appetite
-        - chronic_yabi
-        - lower_limb_numbness
-  effect:
-    syndrome: 气血不足证
-    score: 75
-    modules:
-      - qi_blood_replenish
-      - spleen_damp_core
-      - stomach_protection
-  rationale: >
-    气血不足证占3.8%，高龄患者久病伤正，气血生化不足，
-    筋脉失于濡养，肢体麻木无力。纳差、消瘦为脾胃虚弱、
-    气血生化乏源之象。治以补气养血、健脾和胃为主。
-  safety_level: standard
-
-- id: R005
-  name: 少阳气郁证
-  category: syndrome
-  priority: 75
-  # 占比2.9%，口苦+失眠+寒热往来
-  trigger:
-    any:
-      - bitter_taste
-      - insomnia
-    at_least:
-      count: 2
-      tags:
-        - bitter_taste
-        - insomnia
-        - young_patient
-  effect:
-    syndrome: 少阳气郁证
-    score: 78
-    modules:
-      - shaoyang_heat_phlegm
-      - sleep_calm
-      - stomach_protection
-  rationale: >
-    少阳气郁证占2.9%，以口苦、失眠、情志不畅为辨证要点，
-    多见于年轻患者（柴胡使用率47%）。少阳枢机不利，
-    气机郁滞，治以和解少阳、疏肝解郁，常用柴胡类方。
-  safety_level: standard
-
-- id: R006
-  name: 肾阳不足证
-  category: syndrome
-  priority: 72
-  # 占比2.4%，怕冷+脉沉+冷痛
-  trigger:
-    all:
-      - cold_aggravation
-    any:
-      - cold_extremities
-      - warmth_relieves
-      - elderly
+    any: [slow_pulse, cold_aversion, cold_extremities, deep_cold_pain]
+    at_least: 2
+  # 明确热象是阳虚寒凝的反证：苔黄腻/灼热/尿黄/舌红出现时按反证减分。
+  contra: [yellow_greasy_coating, burning_pain, dark_urine, red_tongue]
   effect:
     syndrome: 肾阳不足证
-    score: 72
-    modules:
-      - kidney_yang_tonify
-      - warm_yang_cold
-      - liver_kidney_bone
-  rationale: >
-    肾阳不足证占2.4%，以怕冷、脉沉迟、腰冷痛为辨证要点。
-    肾阳为一身阳气之根，肾阳不足则温煦无力，寒凝痹痛。
-    治以温肾助阳、散寒止痛，附片为核心药物（需先煎）。
-  safety_level: caution
-  safety_note: 附片需先煎30-60分钟，使用需医师审核
-
-- id: R007
-  name: 脾虚不运证
+    score: 5
+    modules: [温阳散寒模块, 补肾助阳模块]
+  rationale: 畏寒、四肢冷、脉缓等提示阳虚寒凝线索。
+  safety_level: medium
+- id: R005
+  name: 少阳气郁规则
   category: syndrome
   priority: 70
-  # 占比2.4%，纳差+腹胀+齿印+便溏
   trigger:
-    at_least:
-      count: 2
-      tags:
-        - poor_appetite
-        - teeth_marks
-        - damp_heavy
-        - white_greasy_coating
+    any: [bitter_taste, dry_mouth, insomnia, young_patient, emotional_constraint]
+    at_least: 2
+  # 湿热实象（苔黄腻/灼热/尿黄）为强特异性证据，出现时不应再由口苦口干牵引到少阳气郁。
+  contra: [yellow_greasy_coating, burning_pain, dark_urine]
+  effect:
+    syndrome: 少阳气郁证
+    score: 4
+    modules: [少阳清热化痰模块]
+  rationale: 口苦口干、睡眠差、情志约束可作为少阳气郁线索。
+  safety_level: low
+- id: R006
+  name: 脾虚不运规则
+  category: syndrome
+  priority: 75
+  trigger:
+    any: [poor_appetite, epigastric_discomfort, teeth_marks, fatigue, weak_stomach]
+    at_least: 2
   effect:
     syndrome: 脾虚不运证
-    score: 70
-    modules:
-      - spleen_damp_core
-      - stomach_protection
-      - wind_damp_channel
-  rationale: >
-    脾虚不运证占2.4%，以纳差、腹胀、齿痕舌、便溏为辨证要点。
-    脾虚运化失职，湿邪内生，流注经络则为痹证。
-    治以健脾化湿、通络止痛，白术30g、茯苓30g为核心剂量。
-  safety_level: standard
-
-- id: R008
-  name: 湿热痹阻证
+    score: 4
+    modules: [顾护中焦模块, 健脾化湿底盘]
+  rationale: 胃纳差、乏力、齿痕等提示脾运不足，需顾护中焦。
+  safety_level: low
+- id: R007
+  name: 湿热痹阻规则
   category: syndrome
-  priority: 68
-  # 占比1.9%，苔黄腻+热痛+肿胀
+  priority: 82
   trigger:
-    all:
-      - yellow_greasy_coating
-    any:
-      - hot_pain
-      - joint_swelling
-      - damp_heavy
+    any: [yellow_greasy_coating, burning_pain, dark_urine, red_tongue, thirst, heat_aggravation]
+    at_least: 2
+  # 寒象为湿热痹阻的反证。
+  contra: [cold_aversion, deep_cold_pain, cold_aggravation, warmth_relieves, white_greasy_coating]
   effect:
     syndrome: 湿热痹阻证
-    score: 68
-    modules:
-      - shaoyang_heat_phlegm
-      - spleen_damp_core
-  rationale: >
-    湿热痹阻证占1.9%，以苔黄腻、关节红肿热痛为辨证要点。
-    湿热壅滞经络，气血运行受阻。治以清热利湿、通络止痛，
-    薏苡仁、苍术、黄柏为常用药对。
-  safety_level: standard
-
-- id: R009
-  name: 寒湿痹阻证
+    score: 5
+    modules: [清热利湿模块]
+  rationale: 苔黄腻、腰部灼热、小便黄、舌红等提示湿热下注、痹阻经络。
+  safety_level: low
+- id: R008
+  name: 寒湿痹阻规则
   category: syndrome
-  priority: 65
-  # 寒湿阻滞经络，冷痛+苔白腻+受凉加重
+  priority: 78
   trigger:
-    all:
-      - cold_aggravation
-      - white_greasy_coating
-    any:
-      - warmth_relieves
-      - damp_heavy
+    any: [white_greasy_coating, cold_aggravation, warmth_relieves, heavy_lower_limb, greasy_coating]
+    at_least: 2
+  # 热象为寒湿痹阻的反证。
+  contra: [yellow_greasy_coating, burning_pain, dark_urine, red_tongue]
   effect:
     syndrome: 寒湿痹阻证
-    score: 65
-    modules:
-      - warm_yang_cold
-      - wind_damp_channel
-      - spleen_damp_core
-  rationale: >
-    寒湿痹阻证以受凉加重、苔白腻、冷痛为辨证要点。
-    外感寒湿之邪，或阳虚寒湿内生，痹阻经络。
-    治以散寒除湿、温通经络，细辛、独活为主药。
-  safety_level: standard
-
-- id: R010
-  name: 温胆痰热证
-  category: syndrome
-  priority: 62
-  # 口苦+失眠+苔腻+痰热内扰
-  trigger:
-    at_least:
-      count: 3
-      tags:
-        - bitter_taste
-        - insomnia
-        - white_greasy_coating
-        - yellow_greasy_coating
-        - damp_heavy
-  effect:
-    syndrome: 温胆痰热证
-    score: 62
-    modules:
-      - sleep_calm
-      - shaoyang_heat_phlegm
-      - stomach_protection
-  rationale: >
-    温胆痰热证以口苦、失眠、苔腻为辨证要点，痰热内扰心神。
-    统计显示竹茹、栀子、炒芥子在此证型使用率均达100%。
-    治以温胆清热、化痰安神，温胆汤为核心方。
-  safety_level: standard
+    score: 4
+    modules: [健脾化湿底盘, 温阳散寒模块]
+  rationale: 苔白腻、遇冷/阴雨加重、得温则减、肢体困重提示寒湿痹阻经络。
+  safety_level: low

@@ -1,6 +1,8 @@
 agent_name: ShenQinrong_YaoBi_Hermes_Agent
 case_guide_agent_name: YaoBi_CaseGuide_Hermes_Agent
-version: 0.1.0
+# Single version fact: must equal pyproject.toml [project].version and
+# backend/provenance.py APP_VERSION (enforced by tests/test_version_consistency.py).
+version: 0.14.0
 mode: research_education_clinician_review_only
 base_model: CMLM/Dao1-30b-a3b
 purpose: 名老中医腰痹诊疗经验研究助手 / 临床处方辅助系统的非处方化规则解释内核
@@ -15,24 +17,50 @@ system_prompt: |
   6. 输出必须包括证据、规则、解释、不确定性、医生审核提示。
   7. 对附片、细辛、虫类药、乌头类外用药等必须给出安全提醒。
   8. 若发现红旗症状，必须建议线下就医或医生评估。
+# Mirrors backend/skills/pipeline.py (v0.8+): the red-flag gate (safety_guard_skill)
+# runs BEFORE any clinical reasoning; a confirmed emergency-category red flag halts the
+# chain with an emergency referral only. A second full-pool safety scan runs after herb
+# modules so the primary route's core herbs are screened too. Ordering is enforced by
+# tests/test_version_consistency.py.
 default_sequence:
   - case_extract_skill
   - case_normalize_skill
+  - safety_guard_skill            # red-flag gate: emergency categories hard-halt here
   - syndrome_router_skill
   - formula_base_selector_skill
   - herb_module_composer_skill
   - conflict_checker_skill
-  - safety_guard_skill
+  - safety_guard_skill            # full-pool re-scan (modules + formula core herbs)
+  - uncertainty_skill
   - tao_report_generation_skill
 tao_runtime:
   default_enabled: false
-  supported_backends: [disabled, mock, http, transformers]
+  # http = generic OpenAI-compatible endpoint; poe/minimax/azure are hosted providers
+  # served by the same wire path with provider-correct endpoints/auth (v0.13).
+  supported_backends: [disabled, mock, http, poe, minimax, azure, transformers]
   output_format: json_object
   json_repair: true
   guardrail: no_final_diagnosis_no_patient_executable_prescription_no_dose
   fallback: report_generation_skill
 
 dynamic_logic:
+  red_flag_gate:
+    position: before_clinical_reasoning
+    # Orthopedic emergency ontology v0.10 — kept in sync with
+    # backend/skills/safety_guard_skill.EMERGENCY_HALT_CATEGORIES (CI-enforced).
+    halt_categories:
+      - cauda_equina_symptoms
+      - progressive_weakness
+      - fever_or_infection
+      - major_trauma
+      - open_fracture_dislocation
+      - neurovascular_deficit
+      - compartment_syndrome
+      - vascular_emergency
+      - cardiopulmonary_emergency
+      - cervical_myelopathy
+    behavior: emergency_referral_only     # no syndrome/formula/herb output while halted
+    contextual_urgent: keep_clinician_review_analysis   # e.g. fragility trauma (GC012)
   if_red_flag_status_urgent:
     stop_sequence: true
     output: urgent_medical_notice
@@ -56,7 +84,7 @@ dynamic_logic:
 
 case_guide_agent:
   agent_name: YaoBi_CaseGuide_Hermes_Agent
-  version: 0.1.0
+  version: 0.14.0
   purpose: 自动导引患者形成标准化腰痹医案
   mode: research_education_clinician_review_only
   system_prompt: |

@@ -7,6 +7,8 @@ from typing import Any, Iterable
 
 import yaml
 
+from backend.engine.scoring import confidence_from_score
+
 ROOT = Path(__file__).resolve().parents[2]
 RULES_DIR = ROOT / "rules"
 
@@ -57,6 +59,10 @@ class RuleHit:
     effect: dict[str, Any]
     rationale: str
     priority: int = 0
+    # Case tags that argue *against* this rule's conclusion (the rule's `contra` list).
+    contra_tags: tuple[str, ...] = ()
+    # Formula rules: syndromes this route is compatible with (empty = unconstrained).
+    compatible_syndromes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -67,6 +73,7 @@ class RuleHit:
             "effect": self.effect,
             "rationale": self.rationale,
             "priority": self.priority,
+            "contra_tags": list(self.contra_tags),
         }
 
 
@@ -78,43 +85,84 @@ class RuleEngine:
             loaded = load_rule_file(file_name) or []
             self.rules.extend(loaded)
 
+    # Each case tag contradicting a rule's conclusion subtracts this from the score,
+    # so a couple of strong opposite findings (e.g. 苔黄腻+灼热 against a cold-pattern
+    # rule) can demote or eliminate the candidate instead of being silently ignored.
+    CONTRA_PENALTY = 2
+
     def match(self, tags: Iterable[str], category: str | None = None) -> list[RuleHit]:
+        tag_set = set(tags)
         hits: list[RuleHit] = []
         for rule in self.rules:
             if category and rule.get("category") != category:
                 continue
             trigger = rule.get("trigger", {})
-            if trigger_matches(trigger, tags):
+            if trigger_matches(trigger, tag_set):
                 hits.append(
                     RuleHit(
                         rule_id=rule["id"],
                         rule_name=rule["name"],
                         matched=True,
-                        evidence_tags=matched_terms(trigger, tags),
+                        evidence_tags=matched_terms(trigger, tag_set),
                         effect=rule.get("effect", {}),
                         rationale=rule.get("rationale", ""),
                         priority=int(rule.get("priority", 0)),
+                        contra_tags=tuple(sorted(set(rule.get("contra") or []) & tag_set)),
+                        compatible_syndromes=tuple(rule.get("compatible_syndromes") or []),
                     )
                 )
         return sorted(hits, key=lambda h: (h.priority, h.rule_id), reverse=True)
 
+    def _syndrome_trigger_tags(self) -> dict[str, set[str]]:
+        """Syndrome → the union of its rules' trigger tags (for missing-evidence reporting)."""
+
+        triggers: dict[str, set[str]] = defaultdict(set)
+        for rule in self.rules:
+            if rule.get("category") != "syndrome":
+                continue
+            syndrome = (rule.get("effect") or {}).get("syndrome")
+            if not syndrome:
+                continue
+            trig = rule.get("trigger") or {}
+            triggers[syndrome] |= set(trig.get("all") or []) | set(trig.get("any") or [])
+        return triggers
+
     def score_syndromes(self, tags: Iterable[str]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+        tag_set = set(tags)
         scores: dict[str, int] = defaultdict(int)
         evidence: dict[str, list[str]] = defaultdict(list)
-        hits = self.match(tags, category="syndrome")
+        contra_evidence: dict[str, list[str]] = defaultdict(list)
+        hits = self.match(tag_set, category="syndrome")
         for hit in hits:
             syndrome = hit.effect.get("syndrome")
             if not syndrome:
                 continue
-            scores[syndrome] += int(hit.effect.get("score", 0))
+            # Base rule score plus a corroboration bonus: every matched evidence tag
+            # beyond the second strengthens the candidate, so richly supported syndromes
+            # can actually reach "high" confidence (a single rule caps the base at 5).
+            bonus = max(0, len(set(hit.evidence_tags)) - 2)
+            penalty = self.CONTRA_PENALTY * len(hit.contra_tags)
+            scores[syndrome] += int(hit.effect.get("score", 0)) + bonus - penalty
             evidence[syndrome].extend(hit.evidence_tags)
+            contra_evidence[syndrome].extend(hit.contra_tags)
+        trigger_tags = self._syndrome_trigger_tags()
         candidates = []
         for name, score in sorted(scores.items(), key=lambda item: item[1], reverse=True):
-            confidence = "high" if score >= 8 else "medium" if score >= 4 else "low"
+            if score <= 0:
+                # Contradicting evidence outweighed the support: the candidate is
+                # eliminated, not shown with a residual score.
+                continue
+            confidence = confidence_from_score(score)
+            supporting = sorted(set(evidence[name]))
             candidates.append({
                 "name": name,
                 "score": score,
                 "confidence": confidence,
-                "evidence_tags": sorted(set(evidence[name])),
+                "evidence_tags": supporting,
+                # Explicit evidence chain: what supports, what argues against, and
+                # what is still missing — the explainability surface for clinicians.
+                "supporting_evidence": supporting,
+                "contradicting_evidence": sorted(set(contra_evidence[name])),
+                "missing_evidence": sorted(trigger_tags.get(name, set()) - tag_set),
             })
         return candidates, [h.to_dict() for h in hits]

@@ -178,6 +178,65 @@ def test_caseguide_shen_signal_state_applies_deepening_answers():
     assert "poor_appetite" in session.case_state["normalized_tags"]
 
 
+def test_caseguide_followup_budget_is_configurable():
+    session = CaseGuideSession(max_followups_per_state=1, questions_per_turn=2)
+    started = session.start("腰痛")
+    assert started["fsm"]["max_followups_per_state"] == 1
+    assert started["fsm"]["questions_per_turn"] == 2
+    assert len(started["next_questions"]) == 2
+
+    session.answer_red_flags({"RF001": "否", "RF002": "否", "RF003": "否", "RF004": "否", "RF005": "否", "RF006": "否"})
+    assert session.state == "S2_BASIC"
+    forced = session.answer_stage({"age": 68})
+    assert forced["state"] == "S3_PAIN_PROFILE"  # 单轮预算用尽后自动终止追问并进入下一状态。
+
+    assert session.set_max_followups(0) == 1  # 下限保护
+    assert session.set_questions_per_turn(5) == 5
+
+
+def test_caseguide_red_flag_end_state_flag_cannot_skip_unanswered_red_flags():
+    session = CaseGuideSession()
+    session.start("腰痛")
+    result = session.answer_red_flags({"RF001": "否", "RF002": "否", "RF003": "否"}, end_state=True)
+    assert result["state"] == "S1_REDFLAG"
+    assert [q["id"] for q in result["next_questions"]] == ["RF004", "RF005", "RF006"]
+
+
+def test_run_scripted_interview_completes_autonomously():
+    answers = {
+        "RF001": "否", "RF002": "否", "RF003": "否", "RF004": "否", "RF005": "否", "RF006": "否",
+        "age": 68, "sex": "女", "main_symptom": "腰痛", "duration": "5年", "recurrent_status": "反复发作，这次加重",
+        "P001": ["腰骶部"], "P002": "到小腿", "P003": ["酸痛", "麻痛"], "P004": 6, "P005": ["久坐", "受凉"], "P006": ["热敷"],
+        "N001": "经常有", "N002": ["小腿外侧"], "N003": "没有", "N004": "否", "N005": ["做过MRI"], "N006": ["骨质疏松"],
+        "T001": "怕冷", "T002": "遇冷加重，热敷舒服", "T004": "轻微", "T016": "睡不踏实", "T018": "胃口差", "T024": "偏暗紫", "T025": "白腻",
+        "C001": ["骨质疏松", "高血压"], "C002": ["塞来昔布"], "C003": "否", "C004": "没有",
+    }
+    session = CaseGuideSession()
+    result = session.run_scripted_interview(answers, raw_input="我腰痛")
+    assert result["stopped_reason"] == "completed"
+    assert result["state"] == "S10_FINAL_REPORT"
+    assert result["transcript"]
+    assert "radiating_leg_pain" in result["case_state"]["normalized_tags"]
+    assert any(step.get("action") == "auto_end_followups" for step in result["transcript"])
+    package = result["clinician_review_package"]
+    assert package["prescription_review"]["complete_prescription_generated"] is False
+
+
+def test_run_scripted_interview_hard_stops_on_urgent_red_flag():
+    answers = {"RF001": "否", "RF002": "是", "RF003": "否", "RF004": "否", "RF005": "否", "RF006": "否"}
+    session = CaseGuideSession()
+    result = session.run_scripted_interview(answers, raw_input="我腰痛，尿不出来")
+    assert result["stopped_reason"] == "red_flag_urgent"
+    assert result["state"] == "S_EMERGENCY_NOTICE"
+
+
+def test_run_scripted_interview_blocks_when_red_flags_unanswered():
+    session = CaseGuideSession()
+    result = session.run_scripted_interview({}, raw_input="腰痛")
+    assert result["stopped_reason"] == "blocked_unanswered_red_flags"
+    assert result["state"] == "S1_REDFLAG"
+
+
 def test_caseguide_cannot_manually_skip_unanswered_red_flags():
     session = CaseGuideSession()
     session.start("腰痛")

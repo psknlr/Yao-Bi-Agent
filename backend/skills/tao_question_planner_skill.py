@@ -44,7 +44,7 @@ def tao_question_planner_skill(
         "output_contract": {
             "format": "json_object",
             "allowed_question_ids": list(allowed_by_id),
-            "max_questions": 3,
+            "max_questions": len(deterministic_questions),
             "allowed_actions": ["reorder_existing_questions", "patient_friendly_rewrite", "explain_reason"],
             "forbidden_actions": ["new_question_id", "final_diagnosis", "complete_prescription", "dose_instruction"],
         },

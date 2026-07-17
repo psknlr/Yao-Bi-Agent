@@ -5,3 +5,10 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+
+# Raw clinical exports must never be committed (PII). Keep them under data/private/.
+data/private/
+*.xlsx
+
+# Runtime decision audit logs (JSONL) — operational data, never committed.
+logs/
