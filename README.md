@@ -529,6 +529,14 @@ tests/           规则、安全、挖掘与前端回归测试
 ```
 
 
+## 案例队列证据检索与方路一致性核对（v0.15，G1）
+
+`backend/skills/case_retrieval_skill.py` 在管线中新增 case-based reasoning 的最小闭环：把 209 例挖掘出的方路信号按**本案证型排名 + 队列支持度**做相关性排序，并新增**引擎—队列一致性核对**——规则引擎选出的方路是否被名老中医在相似队列中的高频用方所印证（`corroborated` / `supplementary` / `divergent`），带脱敏出处（行号、n/183）。结果挂在管线输出 `case_cohort_evidence`，为医师复核信号、非阻断、非处方，并由患者视图白名单自动隐去。
+
+## 深度审查与下一代差距分析（v0.15）
+
+一次深度代码审查（多智能体工作流 + 逐条对抗验证）与顶级 CDSS/Agent 设计调研的完整记录、差距分析与优先级路线图见 [`docs/next_gen_cdss_gap_analysis.md`](docs/next_gen_cdss_gap_analysis.md)。本轮修复了禁忌告警词表脱节（高危合并症/用药触发不了 interruptive 硬门）、患者端 guard 绕过、问诊死标签、共形集覆盖方向、LLM 集成的角色注入/凭据重定向/限流重试/推理超时等缺陷，并新增词表可达性、模块引用、问诊标签消费者等回归 lint（378 → 409 测试全绿）。
+
 ## 功能完整性审核
 
 详细审核见 [`docs/final_functionality_audit.md`](docs/final_functionality_audit.md)；最近一轮全面功能审核与加固记录见 [`docs/feature_review_2026-07.md`](docs/feature_review_2026-07.md)（含 README 逐条声明核对、发现的缺陷清单与修复对照）。结论：当前项目是研究/CDSS MVP 的核心功能实现，不是临床产品意义上的“完美完成”；真实生产仍需持久化、鉴权、LLM 服务容量规划、专家验证、安全工程和合规审查。

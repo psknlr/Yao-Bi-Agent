@@ -4,6 +4,7 @@ from typing import Any
 
 from backend.engine.conformal import conformal_prediction_set
 from backend.llm.dao_client import DaoClient
+from backend.skills.case_retrieval_skill import case_retrieval_skill
 from backend.provenance import get_provenance
 from backend.skills.safety_guard_skill import ACTION_LEVEL_POLICY, emergency_halt_required
 from backend.skills.tao_report_generation_skill import tao_report_generation_skill
@@ -68,6 +69,15 @@ def run_case_pipeline(raw_text: str, use_llm: bool = False, dao_client: DaoClien
     except (OSError, ValueError):
         # Missing/corrupt calibration file must never break the clinical pipeline.
         uncertainty["uncertainty"]["conformal"] = None
+    # Case-cohort evidence (G1): rank the mined 209-case route signals by relevance to
+    # this case and cross-check the engine's route against the master physician's actual
+    # cohort usage. Clinician-review-only; dropped from patient payloads by the allowlist.
+    try:
+        case_cohort_evidence = case_retrieval_skill(
+            normalized["normalized_tags"], routed["syndrome_candidates"], formula.get("primary_route"),
+        )
+    except (OSError, ValueError):
+        case_cohort_evidence = None
     provenance = get_provenance(getattr(dao_client, "config", None) if use_llm else None)
     report = tao_report_generation_skill(
         case_json=case_json,
@@ -114,6 +124,7 @@ def run_case_pipeline(raw_text: str, use_llm: bool = False, dao_client: DaoClien
             ),
         },
         "provenance": provenance,
+        "case_cohort_evidence": case_cohort_evidence,
         **report,
     }
 
