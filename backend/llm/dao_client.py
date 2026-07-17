@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import json
 import os
+import re
 import time
 import urllib.error
 import urllib.parse
@@ -72,6 +73,49 @@ _DEFAULT_INFERENCE_PROFILES: dict[str, dict[str, Any]] = {
 }
 
 _PROFILE_CACHE: dict[str, dict[str, Any]] | None = None
+
+
+def _parse_retry_after(value: str | None) -> float | None:
+    """Parse a Retry-After header (delta-seconds form only) into a float, else None.
+
+    HTTP-date form is intentionally ignored (needs a clock + tz parse and is rare for
+    JSON APIs) — absence of a parseable delay just means "use the normal backoff".
+    """
+
+    if not value:
+        return None
+    try:
+        secs = float(value.strip())
+        return secs if secs >= 0 else None
+    except (TypeError, ValueError):
+        return None
+
+
+class _NoCrossOriginRedirect(urllib.request.HTTPRedirectHandler):
+    """Block 3xx redirects that change host/scheme.
+
+    The egress policy (HTTPS + host allowlist) is only checked on the *initial* URL.
+    urllib's default opener follows 30x and re-sends the Authorization / api-key header,
+    so a compromised or misconfigured endpoint could 302 the credentials + PHI to an
+    arbitrary host, bypassing the allowlist entirely. We permit only same-origin
+    redirects (rare, but e.g. path normalization) and raise on any origin change.
+    """
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # type: ignore[override]
+        old = urllib.parse.urlsplit(req.full_url)
+        new = urllib.parse.urlsplit(newurl)
+        if (new.scheme, (new.hostname or "").lower(), new.port) != (
+            old.scheme, (old.hostname or "").lower(), old.port
+        ):
+            raise urllib.error.HTTPError(
+                req.full_url, code,
+                f"cross-origin redirect to {new.scheme}://{new.hostname} blocked (egress policy)",
+                headers, fp,
+            )
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+_NO_REDIRECT_OPENER = urllib.request.build_opener(_NoCrossOriginRedirect())
 
 
 def load_inference_profiles() -> dict[str, dict[str, Any]]:
@@ -265,11 +309,26 @@ class DaoClient:
             return {"ok": True, "state": "ready", "backend": backend, "model_id": self.config.model_id}
         return {"ok": False, "state": "error", "backend": backend, "reason": f"Unsupported Tao backend: {backend}"}
 
+    # ChatML control tokens a *user* turn must never contain: left in free text they
+    # would be encoded as real special tokens by the fast tokenizer (add_special_tokens
+    # only governs BOS/EOS), letting pasted input forge a system/assistant turn and
+    # attack the "no diagnosis / prescription / dose" system constraint. Neutralized here
+    # so the local transformers path matches the HTTP path's structural message safety.
+    _CONTROL_TOKEN_RE = re.compile(r"<\|(?:im_start|im_end|endoftext|im_sep)\|>")
+
+    @classmethod
+    def _sanitize_turn_text(cls, content: Any) -> str:
+        return cls._CONTROL_TOKEN_RE.sub("", str(content or ""))
+
     def build_prompt(self, user_content: str, history: list[dict[str, str]] | None = None) -> str:
         text = f"<|im_start|>system\n{SYSTEM_PROMPT}<|im_end|>\n"
         for turn in history or []:
-            text += f"<|im_start|>{turn['role']}\n{turn['content']}<|im_end|>\n"
-        text += f"<|im_start|>user\n{user_content}<|im_end|>\n<|im_start|>assistant\n"
+            # Role is whitelisted (a forged role= would place attacker text in a
+            # privileged turn); content is stripped of control tokens.
+            role = turn.get("role") if isinstance(turn, dict) else None
+            role = role if role in ("user", "assistant") else "user"
+            text += f"<|im_start|>{role}\n{self._sanitize_turn_text(turn.get('content') if isinstance(turn, dict) else turn)}<|im_end|>\n"
+        text += f"<|im_start|>user\n{self._sanitize_turn_text(user_content)}<|im_end|>\n<|im_start|>assistant\n"
         return text
 
     def build_report_prompt(self, structured_rule_outputs: dict[str, Any]) -> str:
@@ -817,6 +876,9 @@ class DaoClient:
     # times with a short backoff before the caller falls back to deterministic rules.
     _HTTP_MAX_ATTEMPTS = 3
     _HTTP_BACKOFF_SECONDS = 1.0
+    # Cap on how long a server-sent Retry-After may stall a request thread (a hostile or
+    # misconfigured endpoint could otherwise pin the thread for hours).
+    _HTTP_MAX_RETRY_AFTER_SECONDS = 30.0
     # Bounded response read: chat completions are text; anything past this is a
     # misbehaving/hostile endpoint, not a longer answer.
     _HTTP_MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -927,14 +989,29 @@ class DaoClient:
         params = params or self._profile_params("teaching_explanation")
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for turn in history or []:
-            messages.append({"role": turn["role"], "content": turn["content"]})
-        messages.append({"role": "user", "content": user_content})
+            role = turn.get("role") if isinstance(turn, dict) else None
+            role = role if role in ("user", "assistant") else "user"
+            messages.append({"role": role, "content": self._sanitize_turn_text(turn.get("content") if isinstance(turn, dict) else turn)})
+        messages.append({"role": "user", "content": self._sanitize_turn_text(user_content)})
         payload = {
             "messages": messages,
-            "temperature": params["temperature"],
-            "top_p": params["top_p"],
             "max_tokens": params["max_new_tokens"],
         }
+        # Honour the inference profile's decoding contract on OpenAI-compatible endpoints:
+        # a greedy structured-JSON profile (do_sample=False) must map to temperature=0,
+        # otherwise routing/extraction stays a temp=0.1 sampler on http/poe/minimax and
+        # the "deterministic structured tasks" guarantee (and eval reproducibility) is
+        # silently broken. Sampling profiles keep temperature/top_p; greedy drops top_p.
+        if params.get("do_sample", True):
+            payload["temperature"] = params["temperature"]
+            payload["top_p"] = params["top_p"]
+        else:
+            payload["temperature"] = 0.0
+        # repetition_penalty has an OpenAI analogue (frequency_penalty); pass a small
+        # positive value through so the profile's anti-repetition intent is not dropped.
+        rep = float(params.get("repetition_penalty", 1.0) or 1.0)
+        if rep > 1.0:
+            payload["frequency_penalty"] = round(min(rep - 1.0, 2.0), 3)
         if payload_model:
             payload["model"] = payload_model
         data = json.dumps(payload).encode("utf-8")
@@ -956,7 +1033,9 @@ class DaoClient:
                     ) from last_error
             request = urllib.request.Request(url, data=data, headers=headers, method="POST")
             try:
-                with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+                # Opener refuses cross-origin redirects so Authorization/api-key + PHI
+                # cannot be re-sent past the egress allowlist via a 302.
+                with _NO_REDIRECT_OPENER.open(request, timeout=self.config.timeout_seconds) as response:
                     # Bounded read: a misbehaving endpoint must not OOM the server.
                     raw = response.read(self._HTTP_MAX_RESPONSE_BYTES + 1)
                     if len(raw) > self._HTTP_MAX_RESPONSE_BYTES:
@@ -967,9 +1046,16 @@ class DaoClient:
                 break
             except urllib.error.HTTPError as exc:
                 last_error = exc
-                if exc.code < 500:
-                    # Client errors (bad key, bad payload) will not heal on retry.
+                # 429 (rate limit) and 408 (request timeout) are transient and the exact
+                # failures a managed/shared-quota backend throws under concurrent probing
+                # or self-consistency sampling — retry them with backoff (honouring
+                # Retry-After when present). Other 4xx (bad key/payload) will not heal.
+                if exc.code not in (408, 429) and exc.code < 500:
                     raise DaoRuntimeError(f"Tao {label} endpoint returned {exc.code}: {exc.reason}") from exc
+                retry_after = _parse_retry_after(exc.headers.get("Retry-After") if exc.headers else None)
+                if retry_after is not None and attempt < self._HTTP_MAX_ATTEMPTS - 1:
+                    time.sleep(min(retry_after, self._HTTP_MAX_RETRY_AFTER_SECONDS))
+                    continue
             except (urllib.error.URLError, TimeoutError, OSError, json.JSONDecodeError) as exc:
                 last_error = exc
             if attempt < self._HTTP_MAX_ATTEMPTS - 1:
@@ -1116,7 +1202,20 @@ class DaoClient:
                 repetition_penalty=params["repetition_penalty"],
                 use_cache=True,
             )
-            with self._generate_lock:
+            # Wall-clock ceiling on local generation (transformers built-in). Without it
+            # timeout_seconds only bounds HTTP, so a slow CPU-offloaded 30B MoE generation
+            # could hold the shared inference lock indefinitely and block every LLM path.
+            timeout_s = float(getattr(self.config, "timeout_seconds", 0) or 0)
+            if timeout_s > 0:
+                generate_kwargs["max_time"] = timeout_s
+            # Bounded lock acquire: if another request is mid-generation and stuck, fail
+            # over to deterministic rules instead of queueing this thread forever.
+            lock_timeout = timeout_s + 5.0 if timeout_s > 0 else -1
+            if not self._generate_lock.acquire(timeout=lock_timeout):
+                raise DaoRuntimeError(
+                    "transformers inference lock busy beyond timeout; falling back to deterministic rules."
+                )
+            try:
                 if stream_callback is not None:
                     streamer = transformers.TextIteratorStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
                     generate_error: list[Exception] = []
@@ -1131,17 +1230,36 @@ class DaoClient:
                     thread = Thread(target=_run_generate)
                     thread.start()
                     response = ""
-                    for token in streamer:
-                        stream_callback(token)
-                        response += token
-                    thread.join()
+                    callback_error: Exception | None = None
+                    try:
+                        for token in streamer:
+                            if callback_error is None:
+                                try:
+                                    stream_callback(token)
+                                except Exception as exc:  # noqa: BLE001 — e.g. BrokenPipe on client disconnect
+                                    # Stop forwarding, but keep draining the streamer so
+                                    # model.generate finishes and the thread can be joined
+                                    # (never release the lock while generate still runs).
+                                    callback_error = exc
+                            response += token
+                    finally:
+                        # Always join the generation thread before releasing the lock —
+                        # the whole reason the lock exists is that a live generate() must
+                        # not run concurrently with the next request on the shared model.
+                        thread.join()
                     if generate_error:
                         raise generate_error[0]
+                    if callback_error is not None:
+                        raise DaoRuntimeError(
+                            f"stream callback failed: {type(callback_error).__name__}: {callback_error}"
+                        ) from callback_error
                     return response
 
                 outputs = model.generate(**generate_kwargs)
-            generated = outputs[0][inputs["input_ids"].shape[-1] :]
-            return tokenizer.decode(generated, skip_special_tokens=True)
+                generated = outputs[0][inputs["input_ids"].shape[-1] :]
+                return tokenizer.decode(generated, skip_special_tokens=True)
+            finally:
+                self._generate_lock.release()
         except DaoRuntimeError:
             raise
         except Exception as exc:  # noqa: BLE001 — surface cause, never crash the request

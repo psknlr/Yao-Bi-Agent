@@ -23,6 +23,17 @@ def test_json_repair_handles_fenced_trailing_comma_and_single_quotes():
     assert meta["repaired"] is True
 
 
+def test_json_repair_does_not_mutate_string_values():
+    """Structural trailing commas are removed, but a ", }" sequence *inside* a string
+    value must be left untouched — the earlier global regex silently deleted it,
+    corrupting clinical text (v0.15 fix)."""
+
+    parsed, meta = loads_with_repair('{"markdown_report": "示例集合 {a, b, }", "key_points": ["x",],}')
+    assert parsed["markdown_report"] == "示例集合 {a, b, }"  # unchanged
+    assert parsed["key_points"] == ["x"]  # structural trailing comma still fixed
+    assert meta["repaired"] is True
+
+
 def test_tao_overlay_accepts_repaired_safe_json():
     safe = """以下为结果：
     {'markdown_report': '本案为规则命中教学解释，不构成诊断、处方或治疗建议。',

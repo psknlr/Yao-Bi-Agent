@@ -41,19 +41,30 @@ class _FakeResponse:
 
 
 def _capture_urlopen(monkeypatch, payload: dict[str, Any]) -> dict[str, Any]:
-    """Patch urlopen; return a dict that fills with the captured request on call."""
+    """Capture the outgoing request. The client sends through a cross-origin-blocking
+    opener (egress hardening), so patch that opener's ``open`` — and urlopen too, so the
+    seam is covered regardless of which the client uses."""
 
     captured: dict[str, Any] = {}
 
-    def fake_urlopen(request, timeout=None):
+    def _record(request):
         captured["url"] = request.full_url
         # Request normalizes header capitalization — compare lowercased.
         captured["headers"] = {k.lower(): v for k, v in request.header_items()}
         captured["payload"] = json.loads(request.data.decode("utf-8"))
+
+    def fake_urlopen(request, timeout=None):
+        _record(request)
+        captured["timeout"] = timeout
+        return _FakeResponse(payload)
+
+    def fake_opener_open(request, data=None, timeout=None):
+        _record(request)
         captured["timeout"] = timeout
         return _FakeResponse(payload)
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr("backend.llm.dao_client._NO_REDIRECT_OPENER.open", fake_opener_open)
     return captured
 
 
@@ -260,6 +271,77 @@ def test_manifest_backend_lists_match_code(monkeypatch):
     model_cfg = yaml.safe_load((root / "config" / "model_config.yaml").read_text(encoding="utf-8"))
     assert set(hermes["tao_runtime"]["supported_backends"]) == expected
     assert set(model_cfg["runtime"]["supported_backends"]) == expected
+
+
+# ---------------------------------------------------------- v0.15 robustness contracts
+
+def test_greedy_profile_maps_to_temperature_zero_on_http(monkeypatch):
+    """A structured_json (do_sample=False) task must decode greedily on OpenAI-compatible
+    endpoints too — temperature=0 and no top_p — not silently stay a temp=0.1 sampler."""
+
+    captured = _capture_urlopen(monkeypatch, _OPENAI_REPLY)
+    client = DaoClient(DaoGenerationConfig(backend="poe", endpoint_url="https://api.poe.com/v1/chat/completions", api_key="k"))
+    client.route_skill({"user_input": "腰痛", "candidate_skills": ["a", "b"]})
+    assert captured["payload"]["temperature"] == 0.0
+    assert "top_p" not in captured["payload"]
+
+
+def test_sampling_profile_keeps_temperature_and_top_p(monkeypatch):
+    captured = _capture_urlopen(monkeypatch, _OPENAI_REPLY)
+    client = DaoClient(DaoGenerationConfig(backend="poe", endpoint_url="https://api.poe.com/v1/chat/completions", api_key="k"))
+    client.generate_consultation({"question": "请解释", "evidence": {}})
+    assert captured["payload"]["temperature"] > 0
+    assert "top_p" in captured["payload"]
+
+
+def test_http_429_is_retried_then_succeeds(monkeypatch):
+    import urllib.error
+
+    calls = {"n": 0}
+
+    def flaky_open(request, data=None, timeout=None):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {}, None)
+        return _FakeResponse(_OPENAI_REPLY)
+
+    monkeypatch.setattr("backend.llm.dao_client._NO_REDIRECT_OPENER.open", flaky_open)
+    monkeypatch.setattr("time.sleep", lambda *_: None)
+    client = DaoClient(DaoGenerationConfig(backend="poe", endpoint_url="https://api.poe.com/v1/chat/completions", api_key="k"))
+    reply = client.chat([], "你好")
+    assert "模型回复" in reply
+    assert calls["n"] == 2  # retried the 429, did not give up immediately
+
+
+def test_http_400_is_not_retried(monkeypatch):
+    import urllib.error
+
+    calls = {"n": 0}
+
+    def bad_request_open(request, data=None, timeout=None):
+        calls["n"] += 1
+        raise urllib.error.HTTPError(request.full_url, 400, "Bad Request", {}, None)
+
+    monkeypatch.setattr("backend.llm.dao_client._NO_REDIRECT_OPENER.open", bad_request_open)
+    client = DaoClient(DaoGenerationConfig(backend="poe", endpoint_url="https://api.poe.com/v1/chat/completions", api_key="k"))
+    with pytest.raises(DaoRuntimeError, match="400"):
+        client.chat([], "你好")
+    assert calls["n"] == 1  # client error, no retry
+
+
+def test_cross_origin_redirect_is_blocked():
+    """The egress opener must refuse a redirect that changes host — otherwise the
+    Authorization header + PHI would follow a 302 past the allowlist."""
+
+    import urllib.error
+    import urllib.request
+
+    from backend.llm.dao_client import _NoCrossOriginRedirect
+
+    handler = _NoCrossOriginRedirect()
+    req = urllib.request.Request("https://api.trusted.example/v1/chat/completions", method="POST")
+    with pytest.raises(urllib.error.HTTPError):
+        handler.redirect_request(req, None, 302, "Found", {}, "https://attacker.example/collect")
 
 
 def test_server_enables_tao_for_provider_backends(monkeypatch):

@@ -69,8 +69,15 @@ def test_http_payload_uses_plain_messages_not_templated_prompt(monkeypatch):
         captured.update(json.loads(request.data.decode("utf-8")))
         return _FakeResponse()
 
+    def _fake_opener_open(request, data=None, timeout=0):
+        import json
+        captured.update(json.loads(request.data.decode("utf-8")))
+        return _FakeResponse()
+
     import urllib.request
     monkeypatch.setattr(urllib.request, "urlopen", _fake_urlopen)
+    # The client sends through the cross-origin-blocking opener (egress hardening).
+    monkeypatch.setattr("backend.llm.dao_client._NO_REDIRECT_OPENER.open", _fake_opener_open)
     client = _http_client()
     client.generate({"normalized_tags": ["lumbar_pain"]})
     user_contents = [m["content"] for m in captured["messages"] if m["role"] == "user"]
