@@ -190,6 +190,20 @@ _PATIENT_GUARDED_FALLBACK = (
 )
 
 
+_TRACE_REDACTED = "（该步骤含仅供医师查看的内容，已在患者视图隐去）"
+
+
+def _patient_safe_trace_step(step: Any) -> Any:
+    """Redact a trace step's free-text observation if it fails the strict patient guard."""
+
+    if not isinstance(step, dict):
+        return step
+    obs = step.get("observation")
+    if isinstance(obs, str) and not guard_tao_output(obs)["allowed"]:
+        return {**step, "observation": _TRACE_REDACTED}
+    return step
+
+
 def filter_patient_payload(turn: dict[str, Any]) -> dict[str, Any]:
     """Reduce a turn payload to the patient-visible structured schema.
 
@@ -202,6 +216,13 @@ def filter_patient_payload(turn: dict[str, Any]) -> dict[str, Any]:
     answer = str(turn.get("answer") or "")
     guard = guard_tao_output(answer)
     filtered: dict[str, Any] = {key: turn[key] for key in PATIENT_TURN_VISIBLE_FIELDS if key in turn}
+    # The top-level answer is re-guarded, but ``trace`` is a free-text container whose
+    # per-step ``observation`` carries the full step answer — a leaked draft or a
+    # dose-instruction (e.g. 附子先煎) that was blocked at the top level could survive
+    # inside the trace. Re-run the strict patient guard over every observation and
+    # replace any violating one (the trace stays visible as a reasoning skeleton).
+    if "trace" in filtered and isinstance(filtered["trace"], list):
+        filtered["trace"] = [_patient_safe_trace_step(step) for step in filtered["trace"]]
     filtered.update({
         "role": "patient",
         "patient_visible_message": answer if guard["allowed"] else _PATIENT_GUARDED_FALLBACK,

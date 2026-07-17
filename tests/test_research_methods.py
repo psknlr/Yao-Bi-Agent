@@ -53,10 +53,36 @@ def test_calibration_uses_golden_cases_and_membership_rule():
 
 
 def test_wide_qhat_widens_the_prediction_set():
-    cands = [{"name": "A", "score": 5}, {"name": "B", "score": 3}, {"name": "C", "score": 1}]
+    # Real syndrome labels: membership is decided over the whole label universe.
+    cands = [{"name": "肝肾不足证", "score": 5}, {"name": "气血痹阻证", "score": 3}, {"name": "寒湿痹阻证", "score": 1}]
     tight = conformal_prediction_set(cands, calibration={"alpha": 0.1, "target_coverage": 0.9, "q_hat": 0.0, "calibration_n": 20, "trivial": False})
     wide = conformal_prediction_set(cands, calibration={"alpha": 0.1, "target_coverage": 0.9, "q_hat": 0.9, "calibration_n": 20, "trivial": False})
-    assert tight["set_size"] < wide["set_size"] == 3
+    assert tight["set_size"] == 1  # only the argmax-tied label at q̂=0
+    assert wide["set_size"] == 3  # all three scoring candidates enter at q̂=0.9
+
+
+def test_qhat_one_returns_full_label_space_not_just_candidates():
+    """Guarantee-direction fix: at q̂>=1 (trivial), the prediction set must be the whole
+    syndrome universe — including syndromes the engine did NOT surface as candidates —
+    otherwise a missed true syndrome could never be covered."""
+
+    from backend.engine.conformal import all_syndrome_labels
+
+    cands = [{"name": "肝肾不足证", "score": 5}]
+    full = conformal_prediction_set(cands, calibration={"alpha": 0.1, "target_coverage": 0.9, "q_hat": 1.0, "calibration_n": 5, "trivial": True})
+    assert set(full["prediction_set"]) == set(all_syndrome_labels())
+    assert full["set_size"] == len(all_syndrome_labels()) > 1
+
+
+def test_dev_set_contamination_is_surfaced():
+    """q̂=0 from the golden set (which doubles as the rule-dev set) must be flagged so the
+    coverage claim is not mistaken for held-out validation."""
+
+    cal = calibrate()
+    result = conformal_prediction_set([{"name": "肝肾不足证", "score": 7}], calibration=cal)
+    if cal["q_hat"] == 0.0:
+        assert result["dev_set_contaminated"] is True
+        assert "交换性假设" in result["coverage_note"] or "开发集" in result["coverage_note"]
 
 
 def test_loo_coverage_meets_target():

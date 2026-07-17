@@ -29,6 +29,7 @@ from typing import Any
 
 import yaml
 
+from backend.engine.rule_engine import RULES_DIR, load_rule_file
 from backend.skills.case_extract_skill import case_extract_skill
 from backend.skills.case_normalize_skill import case_normalize_skill
 from backend.skills.syndrome_router_skill import syndrome_router_skill
@@ -38,7 +39,46 @@ GOLDEN_CASES_PATH = ROOT / "evaluation" / "golden_cases.yaml"
 
 DEFAULT_ALPHA = 0.1
 
-_CALIBRATION_CACHE: dict[float, dict[str, Any]] | None = None
+# Cache keyed on (alpha, signature) so a hot-edit of the rule base or golden set
+# invalidates a stale q̂ — the previous per-alpha cache silently kept the old threshold
+# while the engine that produced it had changed (provenance-consistency gap).
+_CALIBRATION_CACHE: dict[tuple[float, tuple], dict[str, Any]] | None = None
+
+
+def _calibration_signature() -> tuple:
+    """Change detector for everything q̂ depends on: the syndrome/formula rules that
+    drive scoring plus the golden calibration file."""
+
+    keys = []
+    for path in sorted(RULES_DIR.glob("*.yaml")):
+        try:
+            st = path.stat()
+            keys.append((path.name, st.st_mtime_ns, st.st_size))
+        except OSError:
+            keys.append((path.name, None, None))
+    try:
+        gst = GOLDEN_CASES_PATH.stat()
+        keys.append(("golden", gst.st_mtime_ns, gst.st_size))
+    except OSError:
+        keys.append(("golden", None, None))
+    return tuple(keys)
+
+
+def all_syndrome_labels() -> list[str]:
+    """The full syndrome label universe (every syndrome the rule base can conclude).
+
+    Conformal membership must be decided over this universe, not only over the engine's
+    positive candidates — otherwise a case whose true syndrome the engine failed to
+    surface (nonconformity 1.0) can never enter the set even at q̂=1, silently breaking
+    the coverage-guarantee direction the method is supposed to preserve.
+    """
+
+    labels = set()
+    for rule in (load_rule_file("02_syndrome_rules.yaml") or []):
+        syndrome = (rule.get("effect") or {}).get("syndrome")
+        if syndrome:
+            labels.add(syndrome)
+    return sorted(labels)
 
 
 def _nonconformity(candidates: list[dict[str, Any]], true_syndrome: str) -> float:
@@ -95,22 +135,32 @@ def calibrate(alpha: float = DEFAULT_ALPHA, cases: list[dict[str, Any]] | None =
     """Compute the conformal threshold q̂ from the golden calibration set (cached)."""
 
     global _CALIBRATION_CACHE
-    if cases is None and _CALIBRATION_CACHE is not None and alpha in _CALIBRATION_CACHE:
-        return _CALIBRATION_CACHE[alpha]
+    cache_key = (alpha, _calibration_signature())
+    if cases is None and _CALIBRATION_CACHE is not None and cache_key in _CALIBRATION_CACHE:
+        return _CALIBRATION_CACHE[cache_key]
 
     calibration_cases = cases if cases is not None else load_calibration_cases()
     scores = [_nonconformity(_rank_candidates(c["input_text"]), c["label"]) for c in calibration_cases]
+    q_hat = _finite_sample_qhat(scores, alpha)
     result = {
         "alpha": alpha,
         "target_coverage": round(1 - alpha, 3),
-        "q_hat": round(_finite_sample_qhat(scores, alpha), 4),
+        # q̂ kept at full precision for membership: rounding down (the old round(…,4))
+        # can only narrow the set, violating the "never anti-conservative" contract.
+        "q_hat": q_hat,
+        "q_hat_display": round(q_hat, 4),
         "calibration_n": len(scores),
-        "trivial": _finite_sample_qhat(scores, alpha) >= 1.0,
+        "trivial": q_hat >= 1.0,
+        # q̂=0 means every calibration case ranked its label first — expected here because
+        # the golden set doubles as the rule-development set, so the split-conformal
+        # exchangeability assumption is violated (dev-set contamination). Surfaced so the
+        # coverage claim is read as "not yet validated on held-out cases", not as evidence.
+        "dev_set_contaminated": q_hat == 0.0,
     }
     if cases is None:
         if _CALIBRATION_CACHE is None:
             _CALIBRATION_CACHE = {}
-        _CALIBRATION_CACHE[alpha] = result
+        _CALIBRATION_CACHE[cache_key] = result
     return result
 
 
@@ -127,24 +177,37 @@ def conformal_prediction_set(
 
     cal = calibration or calibrate(alpha)
     q_hat = float(cal["q_hat"])
+    # Membership is decided over the WHOLE syndrome label space so the guarantee
+    # direction survives the case that matters most — the engine missing the true
+    # syndrome. Candidates carry their score-ratio nonconformity; every other label
+    # scores 0 → nonconformity 1.0 → included iff q̂ >= 1.0 (the trivial full set).
+    scored = {c["name"]: float(c.get("score") or 0) for c in (candidates or [])}
+    top_score = max(scored.values(), default=0.0) or 1.0
     names: list[str] = []
-    if candidates:
-        top_score = max(float(c.get("score") or 0) for c in candidates) or 1.0
-        names = [c["name"] for c in candidates if 1.0 - (float(c.get("score") or 0) / top_score) <= q_hat]
+    for label in all_syndrome_labels():
+        nonconformity = 1.0 - (scored.get(label, 0.0) / top_score)
+        if nonconformity <= q_hat:
+            names.append(label)
     note = (
         f"项目内校准的候选证型集合（校准集 n={cal['calibration_n']}）：提示在当前规则打分下尚不能排除的证型；"
         f"目标覆盖率 {cal['target_coverage']:.0%} 仅相对项目内标注分布按边际意义成立，小样本下集合偏保守，"
         "不代表真实临床人群的诊断概率，不构成统计学意义上的临床正确性保证"
     )
+    if cal.get("dev_set_contaminated"):
+        note += (
+            "；注意：当前 q̂=0 源于校准集与规则开发集同源（交换性假设被违反），"
+            "覆盖声明尚未在留出病例上验证，集合退化为并列最高分候选，仅供参考"
+        )
     if cal.get("trivial"):
-        note += "；校准样本过少，本集合退化为全部候选（无排除力）"
+        note += "；校准样本过少，本集合退化为全部证型（无排除力）"
     return {
         "prediction_set": names,
         "set_size": len(names),
         "alpha": cal["alpha"],
         "target_coverage": cal["target_coverage"],
-        "q_hat": cal["q_hat"],
+        "q_hat": cal.get("q_hat_display", round(q_hat, 4)),
         "calibration_n": cal["calibration_n"],
+        "dev_set_contaminated": cal.get("dev_set_contaminated", False),
         "coverage_note": note,
         "method": "split_conformal_score_ratio",
     }

@@ -258,3 +258,21 @@ GUARD_INNOCENT_TEXT = [
 @pytest.mark.parametrize("text", GUARD_INNOCENT_TEXT)
 def test_patient_guard_allows_innocent_counsel(text):
     assert guard_tao_output(text)["allowed"] is True, f"guard 误杀正常科普: {text}"
+
+
+def test_patient_payload_redacts_leaked_trace_observation():
+    """The trace is patient-visible; a dose/prescription that leaked into a step's
+    observation must be redacted even when the top-level answer is clean (v0.15)."""
+
+    turn = {
+        "answer": "这是安全科普内容，请遵医嘱。",
+        "intent": "safety_inquiry",
+        "trace": [
+            {"step": 1, "action": "safety", "observation": "注意休息，避免久坐。"},
+            {"step": 2, "action": "herb", "observation": "附子先煎30分钟，每日三丸温服。"},
+        ],
+    }
+    filtered = filter_patient_payload(turn)
+    assert filtered["trace"][0]["observation"] == "注意休息，避免久坐。"
+    assert "先煎" not in filtered["trace"][1]["observation"]
+    assert "三丸" not in filtered["trace"][1]["observation"]
