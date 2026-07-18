@@ -1,142 +1,107 @@
 <!doctype html>
 <html lang="zh-CN">
-<head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>YaoBi-CaseGuide | 沈钦荣腰痹经验 CDSS</title>
-  <link rel="stylesheet" href="./styles.css"/>
-</head>
-<body>
-<div class="app-shell">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>YaoBi-CaseGuide | 沈钦荣腰痹经验 CDSS</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="流程导航">
+        <div class="brand">
+          <div class="brand-mark">腰</div>
+          <div>
+            <p class="eyebrow">YaoBi-Skill</p>
+            <h1>腰痹医案导引</h1>
+          </div>
+        </div>
+        <div class="mode-card">
+          <span class="status-dot"></span>
+          <div>
+            <strong>research_education_clinician_review_only</strong>
+            <p>规则优先 · 证据可追溯 · 医师审核 · 非患者自用</p>
+          </div>
+        </div>
+        <nav id="moduleNav" class="module-nav" aria-label="系统模块"></nav>
+        <nav id="stepper" class="stepper"></nav>
+        <section class="integration-card" aria-label="全功能集成">
+          <h3>全功能集成</h3>
+          <ul>
+            <li>多智能体共享黑板自主协作</li>
+            <li>多轮问答·语言模型自主调用技能</li>
+            <li>CaseGuide FSM 自动问诊</li>
+            <li>Tao 规则约束内自动追问</li>
+            <li>医师经验辨证推理（规则+Tao）</li>
+            <li>案例经验总结自动生成</li>
+            <li>规则引擎 / 标签 / 证型 / 方剂路线</li>
+            <li>xlsx 医案规则挖掘（脱敏）</li>
+            <li>JSON Repair + Output Guard</li>
+            <li>CDSS 草案 + 医师审核签名</li>
+          </ul>
+        </section>
+      </aside>
 
-  <!-- ══ Left Sidebar ═══════════════════════════════════════ -->
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">腰</div>
-      <div class="brand-text">
-        <p class="eyebrow">YaoBi-Skill v2</p>
-        <h1>腰痹医案导引</h1>
-      </div>
+      <main class="main-panel">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Shen-Qinrong YaoBi Rule Agent</p>
+            <h2 id="pageTitle">自动导引患者生成标准腰痹医案</h2>
+          </div>
+          <div class="topbar-actions">
+            <button id="doctorModeBtn" class="ghost-btn" type="button">医生/研究者模式</button>
+            <button id="exportJsonBtn" class="primary-btn" type="button">导出 JSON</button>
+          </div>
+        </header>
+
+        <section id="screen" class="screen" aria-live="polite"></section>
+      </main>
+
+      <aside class="case-sidebar" aria-label="实时医案侧栏">
+        <div class="quality-card">
+          <div class="quality-ring" id="qualityRing">0%</div>
+          <div>
+            <p class="eyebrow">医案完整度</p>
+            <h3 id="qualityGrade">待开始</h3>
+            <p id="qualityHint">先完成知情提示与红旗筛查。</p>
+          </div>
+        </div>
+
+        <section class="live-card">
+          <div class="card-heading">
+            <h3>实时医案草稿</h3>
+            <span id="autosaveBadge">本地暂存</span>
+          </div>
+          <dl class="case-preview">
+            <dt>主诉</dt><dd id="previewChief">未采集</dd>
+            <dt>现病史</dt><dd id="previewHistory">未生成</dd>
+            <dt>关键标签</dt><dd id="previewTags">暂无</dd>
+            <dt>缺失信息</dt><dd id="previewMissing">红旗、病程、疼痛、舌脉、用药</dd>
+          </dl>
+        </section>
+
+        <section class="live-card warning-card">
+          <h3>安全边界</h3>
+          <ul>
+            <li>不替代医生诊断。</li>
+            <li>不向患者输出完整处方或可执行剂量。</li>
+            <li>附片、细辛、虫类药、乌头类药物需医师审核。</li>
+            <li>CDSS 草案仅医生端可见，最终医嘱需签名。</li>
+          </ul>
+        </section>
+      </aside>
     </div>
 
-    <div class="mode-chip">
-      <span class="mode-dot"></span>
-      <div>
-        <strong>research · education · clinician_review</strong>
-        <p id="fsmConfigDisplay">规则模式 · 全局追问 3 轮</p>
-      </div>
-    </div>
+    <template id="questionTemplate">
+      <article class="question-card">
+        <div class="question-meta"></div>
+        <h3></h3>
+        <div class="options"></div>
+        <textarea class="free-note" placeholder="可补充说明，例如右腿外侧麻、左臀部痛、影像报告提示等。"></textarea>
+      </article>
+    </template>
 
-    <div>
-      <p class="stepper-label">问诊流程</p>
-      <nav id="stepper" class="stepper"></nav>
-    </div>
-
-    <div class="sidebar-card">
-      <h4>系统能力</h4>
-      <ul>
-        <li>CaseGuide FSM · 10 状态问诊</li>
-        <li>209 例医案规则提炼</li>
-        <li>追问轮数可配置（1-5 轮）</li>
-        <li>沈老信号实时计算</li>
-        <li>Tao Direct Runtime 叠加</li>
-        <li>Output Guard · JSON Repair</li>
-        <li>CDSS 草案 · 医师审核签名</li>
-      </ul>
-    </div>
-  </aside>
-
-  <!-- ══ Main Panel ═════════════════════════════════════════ -->
-  <main class="main-panel">
-    <header class="topbar">
-      <div class="topbar-title">
-        <p class="eyebrow">Shen-Qinrong YaoBi Rule Agent · 209例数据驱动</p>
-        <h2 id="pageTitle">自动导引患者生成标准腰痹医案</h2>
-      </div>
-      <div class="topbar-actions">
-        <button id="settingsBtn"   class="btn btn-ghost btn-sm">⚙ 问诊配置</button>
-        <button id="doctorModeBtn" class="btn btn-ghost btn-sm">医生模式</button>
-        <button id="exportJsonBtn" class="btn btn-primary btn-sm">导出 JSON</button>
-      </div>
-    </header>
-
-    <section id="screen" class="screen" aria-live="polite"></section>
-  </main>
-
-  <!-- ══ Right Sidebar ══════════════════════════════════════ -->
-  <aside class="case-sidebar">
-    <!-- Quality Ring -->
-    <div class="quality-card">
-      <div class="quality-ring-wrap">
-        <div class="quality-ring" id="qualityRing">0%</div>
-      </div>
-      <div class="quality-info">
-        <p class="label">医案完整度</p>
-        <h3 id="qualityGrade">待开始</h3>
-        <p id="qualityHint">先完成知情提示与红旗筛查。</p>
-      </div>
-    </div>
-
-    <!-- Live Case Preview -->
-    <div class="live-card">
-      <div class="card-head">
-        <h4>实时医案草稿</h4>
-        <span class="badge-live">实时</span>
-      </div>
-      <dl class="case-dl">
-        <dt>主诉</dt>   <dd id="previewChief">未采集</dd>
-        <dt>现病史</dt> <dd id="previewHistory">未生成</dd>
-        <dt>标签</dt>   <dd id="previewTags">暂无</dd>
-        <dt>缺失</dt>   <dd id="previewMissing">待采集</dd>
-      </dl>
-    </div>
-
-    <!-- Shen Signals -->
-    <div class="live-card shen-card">
-      <div class="card-head">
-        <h4>沈老规则信号</h4>
-        <span class="badge-live">实时</span>
-      </div>
-      <div id="signalChips" class="signal-chips">
-        <span class="signal-chip inactive">当归四逆</span>
-        <span class="signal-chip inactive">寒湿痹阻</span>
-        <span class="signal-chip inactive">肝肾不足</span>
-        <span class="signal-chip inactive">少阳柴胡</span>
-        <span class="signal-chip inactive">温胆痰热</span>
-        <span class="signal-chip inactive">顾护中焦</span>
-        <span class="signal-chip inactive">气血痹阻</span>
-        <span class="signal-chip inactive">高龄扶正</span>
-      </div>
-    </div>
-
-    <!-- Safety Reminder -->
-    <div class="live-card warning-card">
-      <div class="card-head"><h4>安全边界</h4></div>
-      <ul>
-        <li>不替代医生最终诊断</li>
-        <li>不输出完整处方或可执行剂量</li>
-        <li>附片先煎 · 细辛≤3g · 虫药需审核</li>
-        <li>CDSS草案仅医生端可见</li>
-      </ul>
-    </div>
-  </aside>
-</div>
-
-<!-- Question Card Template -->
-<template id="qTpl">
-  <article class="question-card">
-    <div class="q-meta">
-      <span class="q-tag q-tag-state" data-stage=""></span>
-      <span class="q-tag q-tag-id" data-id=""></span>
-      <span class="q-answered-badge" style="display:none">✓ 已回答</span>
-    </div>
-    <p class="q-reason"></p>
-    <h3 class="q-text"></h3>
-    <div class="options"></div>
-    <textarea class="q-note" placeholder="补充说明（可选）：如右腿外侧麻、影像报告提示等"></textarea>
-  </article>
-</template>
-
-<script type="module" src="./app.js"></script>
-</body>
+    <script src="./mined_rules.js"></script>
+    <script type="module" src="./app.js"></script>
+  </body>
 </html>

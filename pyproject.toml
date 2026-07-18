@@ -1,13 +1,14 @@
 [project]
 name = "yaobi-skill-agent"
-version = "0.1.0"
+version = "0.15.0"
 description = "Lightweight Skill + Hermes-style agent for Shen Qinrong YaoBi research rules"
 requires-python = ">=3.10"
 dependencies = ["pyyaml>=6.0"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
-llm = ["transformers>=4.44", "torch>=2.2", "accelerate>=0.33"]
+dev = ["pytest>=8.0", "openpyxl>=3.1"]
+llm = ["transformers>=4.51", "torch>=2.2", "accelerate>=0.34", "bitsandbytes>=0.43"]
+mining = ["openpyxl>=3.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

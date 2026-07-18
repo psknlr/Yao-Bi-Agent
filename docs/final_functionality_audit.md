@@ -15,13 +15,17 @@ The repository is **not a clinically perfect or production-complete CDSS**. It i
 | Red-flag screening | Implemented | CaseGuide starts with red flags and can stop into urgent referral mode. |
 | Guided intake state machine | Implemented | `CaseGuideSession` stages consent, red flags, basic info, pain, neuro-ortho, TCM, Shen signals, comorbidities, repair, and reports. |
 | Dynamic follow-up questions | Implemented | Adaptive planner prioritizes missing/high-value fields and patient burden. |
+| Tao rule-constrained auto follow-up | Implemented (guarded, optional) | `tao_followup_probe_skill` lets Tao generate new clarifying probes within the current state theme; probes are advisory, capped, non-transitioning, and rejected on any diagnosis/prescription/dose leak. |
+| Model+rule physician reasoning | Implemented (guarded, optional) | `physician_reasoning_skill` builds a deterministic syndrome→therapy→formula→safety chain and lets Tao articulate it; clinician-only, non-final. |
+| Auto case-experience summary | Implemented (guarded, optional) | `case_experience_summary_skill` generates single-case 医案按语 and batch experience summaries from de-identified mined stats; research/teaching only. |
+| xlsx de-identified rule mining | Implemented | `backend/mining/xlsx_case_miner.py` mines distributions, formula signatures, association rules (support/confidence/lift) and dose ranges into pending-review candidates. |
 | Standard case and clinician handoff | Implemented | Case structuring and clinician handoff markdown outputs exist. |
 | CDSS draft generation | Implemented | `cdss_recommendation_skill` returns clinician-facing candidate diagnoses and prescription strategy drafts. |
 | Physician sign-off workflow | Implemented | `physician_review_skill` accepts physician-entered signed diagnosis/prescription records and rejects model-generated final orders. |
 | Safety boundaries | Implemented in code and tests | Patient executable diagnosis/prescription/dose requests are blocked; CDSS drafts are not patient visible. |
 | Dao1/Tao runtime integration | Implemented as optional guarded runtime | Supports disabled/mock/http/transformers backends, JSON repair, output guard and deterministic fallback; production still needs deployed model infrastructure and prompt regression. |
-| Frontend UI | Protocol only | UI docs exist, but no React/Next.js implementation is present. |
-| HTTP API service | Stub exports only | API re-export modules exist, but no FastAPI app, auth, persistence, or audit-log backend is implemented. |
+| Frontend UI | Implemented (zero-dependency static UI) | `frontend/` ships a same-origin static UI (chat, autonomous multi-step, interview, collaboration timeline, mining explorer) served by `backend/server.py`; it honestly labels LLM routing vs keyword fallback. |
+| HTTP API service | Implemented as stdlib prototype | `backend/server.py` (stdlib `http.server`) serves `/api/chat`, `/api/autonomous`, `/api/followup_probe`, `/api/interview`, `/api/collaboration`, `/api/health` with bounded sessions and request-size limits; auth, persistence and audit-log storage are still missing for production. |
 | Clinical validation | Not implemented | No expert-labeled dataset evaluation, prospective validation, or regulatory safety case is included. |
 
 ## Key safety conclusion

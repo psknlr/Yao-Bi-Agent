@@ -116,3 +116,101 @@ CaseGuide 现在采用“有限状态机 + 状态内最多三轮追问”模式�
 3. Tao 输出必须是 JSON object，并且只能引用候选问题中的既有 id；系统会丢弃新增 id。
 4. Tao 输出会经过 JSON repair 与 forbidden-output guard；如果出现最终诊断、完整处方、剂量、煎服法或患者自用建议，立即回退确定性规则问题。
 5. 因此问诊路径是“规则决定边界和候选问题，Tao 做安全的语义深化与表达优化”，符合 Hermes-style agent 编排，而不是让模型自由问诊或自由开方。
+
+## FSM v0.4：可配置追问预算 + 自主问诊驱动器
+
+1. **追问预算可配置**：`CaseGuideSession(max_followups_per_state=N, questions_per_turn=M)`，
+   也可在运行中调用 `set_max_followups(N)` / `set_questions_per_turn(M)`（均有下限 1 保护）。
+   默认仍是每状态最多 3 轮、每轮最多 3 问；`fsm` 元数据新增 `questions_per_turn` 字段。
+2. **自动终止追问**：当本状态没有可问问题、或追问轮数到达上限时，状态机自动进入下一状态；
+   调用方也可通过 `answer_stage(..., end_state=True)` 或 `end_current_state()` 主动终止。
+3. **红旗硬门控收紧**：`answer_red_flags(..., end_state=True)` 不再能跳过未回答的红旗问题，
+   行为与 `end_current_state()` 一致；红旗未答完时任何方式都不能离开 S1_REDFLAG。
+4. **自主问诊驱动器** `run_scripted_interview(answers)`：给定回答池后，状态机自主完成
+   全流程问诊——逐轮取 next_questions（规则优先，开启 `use_llm_questions` 时叠加 Tao 改写）、
+   提交可用回答、无可答问题时自动结束当前状态的追问，命中 urgent 红旗立即硬停止，
+   到达 S9 自动生成最终报告。返回 `stopped_reason`（completed / red_flag_urgent /
+   blocked_unanswered_red_flags / max_total_turns_reached）与完整 `transcript` 供审计回放。
+5. **前端对齐**：静态原型新增"追问轮数上限（1–5）"设置与"答完自动进入下一状态"开关；
+   单选题答完当前轮会自动深化追问或自动进入下一状态，红旗页在全部回答前禁止手动跳过。
+
+## FSM v0.5：Tao 自动追问 + 经验推理 + 经验总结
+
+在 v0.3/v0.4 的“规则决定边界、Tao 安全叠加”基础上，新增三项 Tao 能力，全部遵循
+“确定性输出为准 → Tao 叠加 → JSON Repair → Output Guard → 失败/违规回退”的统一管线：
+
+1. **规则约束内自动追问**（`tao_followup_probe_skill`）
+   - 与 `tao_question_planner_skill`（只能重排/改写既有规则问题 id）不同，本技能允许 Tao
+     **生成新的澄清式追问**，但施加硬约束：
+     - 仅在临床内容状态启用（S3–S8）；红旗筛查 S1、知情 S0、人口学 S2 不开放生成式追问；
+     - 每轮最多 `tao_probe_budget` 个（`CaseGuideSession` 默认 2，可设 0 关闭）；
+     - `field_hint` 必须取自本状态允许字段或为 null，越界自动降级为纯文字线索；
+     - 追问 **不驱动状态跳转**：答案以 `TAO_PROBE_*` 记入 `case_state.tao_probe_answers`
+       与 `answer_evidence`（`source=tao_probe, advisory_only=true`），状态推进仍由规则问题决定；
+     - 出现诊断/证型判定/处方/剂量或越主题，则整轮追问作废，回退为“不追问”。
+   - `next_questions` 在确定性问题（可经 planner 改写）之后追加 Tao 追问；
+     `fsm.tao_probe_runtime` 暴露其状态供审计与 UI 展示。
+2. **医师经验辨证推理**（`physician_reasoning_skill`）
+   - 规则先构建确定性推理链：四诊采集 → 辨证倾向 → 治法 → 方剂路线 → 药物模块 → 安全复核 → 沈老经验信号，
+     每步带证据；Tao 仅把推理链语言化为教学解释，不得新增规则层没有的结论；患者角色拦截。
+3. **案例经验总结自动生成**（`case_experience_summary_skill`）
+   - `mode="case"` 生成单案医案按语；`mode="experience"` 基于脱敏挖掘统计生成经验规律总结；
+     确定性总结为事实来源与回退，Tao 仅润色。
+
+`final_report` 现额外返回 `physician_reasoning` 与 `case_experience_summary`，均为
+`draft_for_clinician_review`、`patient_visible=false`。
+
+## v0.6：多智能体自主协作编排
+
+`backend/agents/` 将隐式的 skill 顺序调用升级为显式的多智能体协作，编排机制可审计、可视化：
+
+- **共享黑板**（`backend/agents/base.py::Blackboard`）：智能体共享工作记忆；上游写结论、下游读取续接。
+- **智能体**（`backend/agents/clinical_agents.py`）：每个智能体包装一个已测试 skill，声明
+  name/role/kind(rule|llm)/handoff，并返回 `AgentResult`（status、confidence、evidence、used_llm、
+  llm_runtime、halt_pipeline）。
+- **编排器**（`backend/agents/orchestrator.py::AgentOrchestrator`）：
+  - 顺序：CaseStructuring → RedFlag → OrthoRisk → TcmSyndrome → FormulaReasoning → HerbModule →
+    ConflictSafety → EvidenceTrace → Reasoning(llm) → Experience(llm) → PhysicianReview；
+  - **自主中止**：`RedFlagAgent` 命中 urgent 时 `halt_pipeline=True`，下游临床智能体记为 skipped，
+    仅 `EmergencyNoticeAgent`（`runs_after_halt=True`）续跑；
+  - 输出 `collaboration_trace`、`agent_roster`、`used_llm_agents`、`llm_in_loop`、`blackboard`。
+- **集成**：`CaseGuideSession.run_agent_collaboration()` 为独立入口；`final_report()` 以编排器为
+  唯一"大脑"，从 blackboard 还原全部既有返回键并附带 `agent_collaboration`。
+- **安全不变量**：确定性输出为事实来源；仅 Reasoning/Experience 调用语言模型且必经 Output Guard；
+  任何智能体都不得产出最终诊断/处方/可执行剂量；红旗为硬门控。
+
+## v0.7：多轮智能问答 + 语言模型自主调用技能
+
+`backend/agents/skill_router.py` 与 `backend/agents/conversation.py` 在多智能体编排之上叠加
+对话式入口，实现“语言模型自主选择并调用不同 skill，再按用户提问挖掘数据”：
+
+- **技能注册表** `INTENTS`：12 个意图，每个携带 description、keywords 与**示例问题**（用于引导用户）。
+- **意图路由** `route_intent`：
+  - 确定性关键词匹配始终可用、可回退；
+  - 开启 Tao 时调用 `DaoClient.route_skill`，只能返回 `ALLOWED_INTENTS` 内的 intent，
+    越界/解析失败回退关键词，全过程记录 `llm_runtime`；
+  - 患者请求最终诊断/处方/剂量经 `patient_request_guard_skill` 拦截到 `safety_block`。
+- **自主调用技能** `ConversationSession.ask`：路由命中后自主调用对应 skill（syndrome_router、
+  formula_base_selector、herb_module_composer、safety_guard、physician_reasoning、
+  case_experience_summary、mined_evidence 等），并返回调用了哪些 skill、路由方式、规则/语言模型来源。
+- **按提问挖掘** `query_mined`：解析问题中的证型/方剂/症状/药物，实时查询
+  `rules/11_mined_rule_candidates.yaml` 的统计与关联规律（support/confidence/lift、剂量分布）。
+- **引导用户提问** `suggested_questions`：按能力分组给出示例问题，UI 渲染为可点击 chips。
+- **安全不变量**：答案来自确定性规则/脱敏数据；语言模型仅做技能选择与措辞，不产出最终诊断/处方/剂量。
+
+UI 新增「智能问答」模块：多轮对话气泡、示例问题 chips、每条回答标注意图/技能/路由方式/规则-语言模型来源。
+
+## v0.8：自主多步智能体（Plan → Subagent 委派 → Synthesize）
+
+`backend/agents/autonomous_agent.py` 把单意图问答升级为前沿 agent 范式（ReAct + Plan-and-Execute
++ subagent 委派），即“自由问答智能体”：
+
+- **plan_question**：把问题分解为有序多步计划（每步=intent+理由）。确定性关键词规划始终可用；
+  开启 Tao 时 `DaoClient.plan_skills` 可重排/扩展，但 intent 必须 ∈ ALLOWED_INTENTS，越界/解析失败回退。
+- **AutonomousQAAgent.run**：逐步把计划委派给负责该 intent 的子智能体（`ConversationSession.invoke`），
+  累积观察，支持一问多技能；输出 ReAct 轨迹（thought → action(delegate→subagent) → observation）。
+- **_synthesize**：多步时综合各子智能体观察为一条回答（含计划概述与分步小结），单步时直接返回。
+- **安全不变量**：子智能体只运行注册技能、基于确定性规则/脱敏数据；患者请求诊断/处方/剂量拦截；
+  语言模型只规划与编排技能，不产出临床结论。
+- **入口**：`python -m backend.main --ask "..." --autonomous`；UI「智能问答」模块「自主多步」开关
+  展示计划链、子智能体委派与观察、综合结论。

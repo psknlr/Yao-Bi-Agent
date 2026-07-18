@@ -4,7 +4,9 @@ from typing import Iterable
 
 
 def confidence_from_score(score: int) -> str:
-    if score >= 8:
+    # Single rule per syndrome/route caps the base score at 5; the evidence-richness
+    # bonus (see RuleEngine.score_syndromes) makes >=7 reachable for well-supported hits.
+    if score >= 7:
         return "high"
     if score >= 4:
         return "medium"

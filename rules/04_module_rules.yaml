@@ -1,364 +1,61 @@
-# 药物模块规则 - 基于沈钦荣医师209例腰痹医案统计
-# 剂量来源：实际处方统计（众数/常用值）
-# 特殊药物：附片先煎，细辛≤3g，全蝎3g，蜈蚣2g（需医师审核）
-# 模块说明：每个模块为一组功能相近的药物组合，可叠加使用
-
 modules:
-
-  - id: spleen_damp_core
+  spleen_damp_core:
     name: 健脾化湿底盘
-    function: 健脾益气，化湿运中
+    herbs: [白术, 茯苓, 党参, 甘草]
+    triggers: [white_greasy_coating, teeth_marks, fatigue, dampness, chronic_yabi]
     role: base
-    # 使用频率极高，白术30g/茯苓30g为沈老核心剂量
-    herbs:
-      - herb: 白术
-        dose: 30g
-        note: 沈老健脾化湿首选剂量，统计众数30g
-      - herb: 茯苓
-        dose: 30g
-        note: 统计众数30g，利湿健脾
-      - herb: 党参
-        dose: 15g
-      - herb: 甘草
-        dose: 6g
-    indications:
-      - 脾虚不运证
-      - 湿邪内阻
-      - white_greasy_coating
-      - teeth_marks
-      - poor_appetite
-    safety_level: standard
-    rationale: >
-      白术30g、茯苓30g为沈老处方底盘，健脾化湿、顾护中焦。
-      脾为生痰之源，湿邪内生之本，治痹先治脾，脾运则湿化。
-
-  - id: guizhi_shaoyao_pain
-    name: 桂枝芍药缓急模块
-    function: 调和营卫，缓急止痛，温通经脉
-    role: pain_relief
-    herbs:
-      - herb: 桂枝
-        dose: 10g
-        note: 年轻患者（≤40岁）使用率68%
-      - herb: 白芍
-        dose: 15-20g
-        note: 剂量范围15-20g，痛甚可加至20g
-      - herb: 甘草
-        dose: 6g
-      - herb: 大枣
-        dose: 10g
-      - herb: 生姜
-        dose: 6g
-    indications:
-      - 营卫不和
-      - lumbar_leg_pain
-      - cold_aggravation
-      - muscle_spasm
-    safety_level: standard
-    rationale: >
-      桂枝配白芍调和营卫、缓急止痛，为经方止痛核心药对。
-      年轻患者桂枝使用率高达68%，温通经脉兼散外邪。
-
-  - id: wind_damp_channel
-    name: 独活寄生祛风湿
-    function: 祛风除湿，通络止痛
-    role: pathogen_removal
-    herbs:
-      - herb: 独活
-        dose: 15g
-      - herb: 桑寄生
-        dose: 15-30g
-        note: 高龄患者可用至30g
-      - herb: 秦艽
-        dose: 10g
-      - herb: 防风
-        dose: 10g
-      - herb: 细辛
-        dose: 3g
-        note: 严格限量3g，温经止痛，苔腻时慎用
-        safety: 最大剂量3g
-    indications:
-      - 风寒湿痹
-      - lumbar_leg_pain
-      - radiating_leg_pain
-      - cold_aggravation
-    safety_level: standard
-    safety_note: 细辛用量严格控制在3g以内，不可超量
-    rationale: >
-      独活善治下焦风寒湿邪，桑寄生补肝肾兼祛风湿，
-      细辛温经散寒止痛。苔黄腻者减细辛，加薏苡仁清热利湿。
-
-  - id: liver_kidney_bone
-    name: 补肝肾强筋骨
-    function: 补益肝肾，强筋健骨
-    role: constitution_support
-    # 高龄患者（≥73岁）杜仲使用率59%
-    herbs:
-      - herb: 杜仲
-        dose: 12g
-        note: 高龄患者使用率59%
-      - herb: 桑寄生
-        dose: 15g
-      - herb: 川牛膝
-        dose: 15g
-      - herb: 熟地黄
-        dose: 10g
-        note: 高龄患者使用率48%
-      - herb: 续断
-        dose: 15g
-    indications:
-      - 肝肾不足证
-      - elderly
-      - osteoporosis
-      - lumbar_leg_pain
-    safety_level: standard
-    rationale: >
-      肝主筋、肾主骨，高龄腰痹补肝肾为治本之法。
-      杜仲、续断补肾强腰，熟地黄填精益髓，川牛膝引药下行。
-
-  - id: blood_stasis
-    name: 活血化瘀通络
-    function: 活血化瘀，通经活络
-    role: pathogen_removal
-    herbs:
-      - herb: 丹参
-        dose: 30g
-      - herb: 川芎
-        dose: 10g
-      - herb: 赤芍
-        dose: 20g
-      - herb: 酒地龙
-        dose: 10g
-      - herb: 燀山桃仁
-        dose: 10g
-    indications:
-      - 气滞血瘀证
-      - 气血痹阻证
-      - fixed_pain
-      - stabbing_pain
-      - dark_tongue
-      - purple_tongue
-    safety_level: standard
-    safety_note: 出血倾向、凝血功能异常者慎用，孕妇禁用
-    rationale: >
-      活血化瘀为气血痹阻证核心治法。丹参30g活血兼清热，
-      川芎行气活血，赤芍清热活血，地龙通经活络，桃仁破瘀。
-
-  - id: insect_channel
-    name: 虫类搜络
-    function: 搜风通络，剔除顽邪
-    role: special_treatment
-    # 高风险模块，全蝎3g/蜈蚣2g为沈老常用剂量
-    herbs:
-      - herb: 全蝎
-        dose: 3g
-        note: 需确认无过敏史，统计常用剂量3g
-        safety: 需医师审核
-      - herb: 蜈蚣
-        dose: 2g
-        note: 需确认无过敏史，统计常用剂量2g
-        safety: 需医师审核
-      - herb: 酒地龙
-        dose: 10g
-    indications:
-      - 久痹入络
-      - chronic_yabi
-      - lower_limb_numbness
-      - radiating_leg_pain
-    safety_level: high_risk
-    safety_note: >
-      全蝎、蜈蚣为高风险动物药，使用前必须：
-      1. 确认患者无过敏史；
-      2. 经医师审核处方；
-      3. 肝肾功能异常者慎用。
-    rationale: >
-      虫类药善搜剔经络顽邪，适用于久痹入络、麻木顽固者。
-      全蝎3g、蜈蚣2g为沈老统计常用剂量，不可随意加量。
-
-  - id: warm_yang_cold
-    name: 温阳散寒
-    function: 温补阳气，散寒止痛
-    role: pathogen_removal
-    herbs:
-      - herb: 附片
-        dose: 10g
-        note: 必须先煎30-60分钟，不可省略
-        special: 先煎
-        safety: 先煎必须
-      - herb: 桂枝
-        dose: 10g
-      - herb: 肉桂
-        dose: 6-10g
-        note: 后下或冲服效佳
-      - herb: 细辛
-        dose: 3g
-        safety: 最大剂量3g
-      - herb: 麻黄
-        dose: 6-10g
-        note: 有高血压、心脏病者慎用
-    indications:
-      - 肾阳不足证
-      - 寒湿痹阻证
-      - cold_aggravation
-      - cold_extremities
-      - warmth_relieves
-    safety_level: caution
-    safety_note: >
-      附片必须先煎30-60分钟；麻黄有高血压、心率过快者慎用；
-      细辛严格限量3g；整体方案需医师审核。
-    rationale: >
-      温阳散寒为寒痹、肾阳不足的核心治法。附片温肾壮阳，
-      桂枝温通经脉，细辛温经止痛，麻黄宣散外寒。
-
-  - id: shaoyang_heat_phlegm
-    name: 少阳清热化痰
-    function: 和解少阳，清热化痰
-    role: pathogen_removal
-    herbs:
-      - herb: 北柴胡
-        dose: 5g
-        note: 用量偏小，取其疏达之性而非发散
-      - herb: 黄芩
-        dose: 6g
-      - herb: 姜半夏
-        dose: 6g
-      - herb: 竹茹
-        dose: 10g
-      - herb: 栀子
-        dose: 10g
-    indications:
-      - 少阳气郁证
-      - 温胆痰热证
-      - bitter_taste
-      - insomnia
-      - yellow_greasy_coating
-    safety_level: standard
-    rationale: >
-      柴胡、黄芩和解少阳，清半里之热；竹茹、栀子清热化痰，
-      姜半夏降逆化痰和胃。适用于少阳郁热兼痰之证。
-
-  - id: stomach_protection
-    name: 顾护中焦
-    function: 和胃降逆，消食助运，防药伤胃
-    role: adjuvant
-    # 防止诸药伤胃，辅助消化吸收
-    herbs:
-      - herb: 陈皮
-        dose: 6g
-        note: 高龄患者使用率52%，理气和胃
-      - herb: 炒麦芽
-        dose: 15g
-      - herb: 砂仁
-        dose: 3g
-        note: 后下，芳香醒脾
-        special: 后下
-      - herb: 姜半夏
-        dose: 6g
-      - herb: 炒芥子
-        dose: 10g
-    indications:
-      - poor_appetite
-      - 脾虚不运证
-      - 久服补药
-      - 胃脘不适
-    safety_level: standard
-    rationale: >
-      补益药多滋腻碍胃，虫类药有异味刺激，顾护中焦模块
-      以陈皮、砂仁、炒麦芽理气开胃，确保药物吸收利用。
-
-  - id: sleep_calm
-    name: 安神除烦
-    function: 清热除烦，化痰安神
-    role: symptom_relief
-    # 温胆汤核心：竹茹/栀子/炒芥子使用率100%
-    herbs:
-      - herb: 栀子
-        dose: 10g
-        note: 温胆痰热证使用率100%，清热除烦
-      - herb: 竹茹
-        dose: 10g
-        note: 温胆痰热证使用率100%，清热化痰
-      - herb: 炒芥子
-        dose: 10g
-        note: 温胆痰热证使用率100%，化痰散结
-      - herb: 茯苓
-        dose: 30g
-        note: 宁心安神，健脾化湿
-      - herb: 陈皮
-        dose: 6g
-    indications:
-      - 温胆痰热证
-      - insomnia
-      - bitter_taste
-      - 心神不宁
-    safety_level: standard
-    rationale: >
-      统计显示竹茹、栀子、炒芥子在温胆痰热证使用率均达100%，
-      为绝对核心药物。三药合用清热化痰、除烦安神，
-      茯苓宁心，陈皮理气，共奏安神之效。
-
-  - id: qi_blood_replenish
-    name: 补气养血
-    function: 益气养血，扶正固本
-    role: constitution_support
-    # 黄芪30g为沈老标准剂量，当归10g为常用量
-    herbs:
-      - herb: 黄芪
-        dose: 30g
-        note: 沈老常用剂量30g
-      - herb: 当归
-        dose: 10g
-        note: 统计常用量10g，高龄患者使用率74%
-      - herb: 炒党参
-        dose: 15g
-      - herb: 大枣
-        dose: 10g
-      - herb: 炙甘草
-        dose: 15g
-    indications:
-      - 气血不足证
-      - elderly
-      - chronic_yabi
-      - 面色萎黄
-      - poor_appetite
-    safety_level: standard
-    rationale: >
-      黄芪30g补气固表，当归10g养血活血，党参健脾益气，
-      炙甘草15g补中和药。气血双补，扶正以祛邪，
-      适用于久病气血不足、无力抗邪者。
-
-  - id: kidney_yang_tonify
-    name: 温肾助阳
-    function: 温补肾阳，填精益髓
-    role: constitution_support
-    herbs:
-      - herb: 附片
-        dose: 10g
-        note: 先煎30-60分钟，补肾助阳核心药
-        special: 先煎
-        safety: 先煎必须
-      - herb: 肉桂
-        dose: 10g
-        note: 引火归元，温肾助阳
-      - herb: 巴戟天
-        dose: 10g
-      - herb: 蒸萸肉
-        dose: 10g
-      - herb: 菟丝子
-        dose: 15g
-      - herb: 续断片
-        dose: 15g
-    indications:
-      - 肾阳不足证
-      - 怕冷畏寒
-      - cold_extremities
-      - 腰膝冷痛
-      - elderly
-    safety_level: caution
-    safety_note: >
-      附片必须先煎30-60分钟，不可省略；
-      阴虚火旺者禁用；使用前需医师评估。
-    rationale: >
-      肾阳为一身阳气之根，肾阳不足则温煦无力，寒凝痹痛。
-      附片、肉桂温肾阳，巴戟天、菟丝子补肾精，
-      续断补肾强腰，诸药合用温肾助阳、散寒止痛。
+    note: 沈老腰痹治疗底盘模块，重在脾运湿化。
+  guizhi_shaoyao_pain_core:
+    name: 桂枝芍药缓急止痛模块
+    herbs: [桂枝, 白芍, 甘草, 大枣, 生姜]
+    triggers: [spasm_pain, cold_aversion, lumbar_pain, muscle_tension]
+    role: pain_support
+    note: 温经通阳、柔筋缓急。
+  wind_damp_channel:
+    name: 独活寄生祛风湿模块
+    herbs: [独活, 桑寄生, 秦艽, 防风, 细辛]
+    triggers: [lumbar_leg_pain, chronic_yabi, wind_damp_obstruction]
+    role: channel
+    note: 祛风寒湿、通腰膝经络。
+  liver_kidney_bone:
+    name: 补肝肾强筋骨模块
+    herbs: [杜仲, 桑寄生, 牛膝, 熟地黄, 山茱萸, 枸杞子, 续断, 巴戟天]
+    triggers: [elderly, osteoporosis, chronic_yabi, lumbar_knee_soreness]
+    role: root_support
+    note: 强腰膝、补肝肾、处理久病退变。
+  blood_stasis:
+    name: 活血化瘀模块
+    herbs: [丹参, 川芎, 桃仁, 红花, 赤芍, 牡丹皮, 郁金, 香附]
+    triggers: [dark_tongue, fixed_pain, strain_or_sprain, stasis_pattern, stabbing_pain]
+    role: add_on
+    note: 处理劳损、瘀阻、疼痛固定。
+  insect_channel:
+    name: 虫类搜络模块
+    herbs: [蜈蚣, 全蝎, 地龙, 蕲蛇]
+    triggers: [refractory_pain, severe_numbness, chronic_channel_obstruction, lower_limb_numbness]
+    role: add_on
+    note: 顽痛、久麻、久痹入络时的经验模块，必须医师审核。
+  shaoyang_heat_phlegm:
+    name: 少阳清热化痰模块
+    herbs: [柴胡, 黄芩, 黄连, 姜半夏, 竹茹, 炒芥子]
+    triggers: [bitter_taste, dry_mouth, insomnia, emotional_constraint, phlegm_heat]
+    role: concurrent
+    note: 调少阳、清郁热、和胃化痰。
+  stomach_protection:
+    name: 顾护中焦模块
+    herbs: [陈皮, 半夏, 砂仁, 木香, 郁金, 北沙参]
+    triggers: [epigastric_discomfort, poor_appetite, weak_stomach, nausea]
+    role: tolerance
+    note: 提高处方耐受性，防滋腻碍胃。
+  sleep_calm:
+    name: 安神除烦模块
+    herbs: [酸枣仁, 远志, 栀子, 淡豆豉, 竹茹, 茯苓]
+    triggers: [insomnia, irritability, bitter_taste, restlessness]
+    role: concurrent
+    note: 腰痹兼睡眠差、烦躁、郁热扰心。
+  damp_heat_clear:
+    name: 清热利湿模块
+    herbs: [苍术, 黄柏, 牛膝, 薏苡仁, 萆薢]
+    triggers: [yellow_greasy_coating, burning_pain, dark_urine, red_tongue, heat_aggravation]
+    role: add_on
+    note: 湿热下注、腰腿灼热、苔黄腻、小便黄的清利经验模块。

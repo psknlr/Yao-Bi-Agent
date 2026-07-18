@@ -1,7 +1,43 @@
 [
   {
+    "name": "adaptive_question_planner_skill",
+    "description": "Select next 1-3 high-yield questions from safety, missing fields and information gain.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "max_questions": {
+          "type": "integer"
+        },
+        "patient_burden_count": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
     "name": "case_extract_skill",
-    "description": "Extract structured clinical features from a de-identified lumbar Bi syndrome case text without diagnosis.",
+    "description": "Extract structured clinical features from a de-identified lumbar Bi case text without diagnosis.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -11,7 +47,19 @@
       },
       "required": [
         "raw_text"
-      ]
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
     }
   },
   {
@@ -26,7 +74,971 @@
       },
       "required": [
         "case_json"
-      ]
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "case_quality_check_skill",
+    "description": "Score case completeness and recommend follow-up questions.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "case_structuring_skill",
+    "description": "Generate a standard lumbar Bi case draft without diagnosis or prescription.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "cdss_recommendation_skill",
+    "description": "Generate clinician-facing CDSS draft candidates (draft_for_clinician_review, never patient-visible).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "syndrome_candidates": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "formula_routes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "matched_modules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "safety": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "user_role": {
+          "type": "string",
+          "enum": [
+            "patient",
+            "clinician",
+            "researcher",
+            "system"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "chief_complaint_skill",
+    "description": "Convert patient wording into a standard chief complaint.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "main_symptom": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "duration": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "recurrent_status": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "acute_worsening": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "associated_symptom": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "clinical_scope_router_skill",
+    "description": "Route a case to its clinical domain and approved capability set; non-lumbar complaints never enter the lumbar-Bi formula chain.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "raw_text": {
+          "type": "string"
+        },
+        "red_flag_categories": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "raw_text"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "clinician_handoff_skill",
+    "description": "Generate a concise clinician handoff summary for review.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "formula_routes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "matched_modules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "safety": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "clinician_review_package_skill",
+    "description": "Assemble clinician-review hypotheses and prescription-experience signals (no final diagnosis/prescription/dose).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "syndrome_candidates": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "formula_routes": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "matched_modules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "safety": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "requested_outputs": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "comorbidity_medication_skill",
+    "description": "Collect comorbidities and medications relevant to safety and rule explanation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "answers": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "conflict_checker_skill",
+    "description": "Check herb-herb conflicts, herb-drug interactions and comorbidity contraindications.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "matched_modules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "formula_route": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "medications": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "conditions": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "matched_modules"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "consent_privacy_skill",
+    "description": "Show consent/privacy notice and desensitize patient input.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_role": {
+          "type": "string",
+          "enum": [
+            "patient",
+            "clinician",
+            "researcher",
+            "system"
+          ]
+        },
+        "raw_input": {
+          "type": "string"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "create_physician_review_task",
+    "description": "Create a clinician-only review task for a licensed physician (model does not fill final fields).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "clinician_review_package": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "requested_by": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "formula_base_selector_skill",
+    "description": "Select candidate classical formula route as non-prescriptive research signal.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "normalized_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "syndrome_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        }
+      },
+      "required": [
+        "normalized_tags",
+        "syndrome_candidates"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "herb_module_composer_skill",
+    "description": "Compose non-prescriptive herb modules for research explanation.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "normalized_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "formula_route": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "normalized_tags"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "mined_evidence_skill",
+    "description": "Match de-identified mined rule candidates (pending expert review) to the case tags.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "normalized_tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "syndrome_candidates": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "max_rules": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "normalized_tags"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "neuro_ortho_screen_skill",
+    "description": "Collect numbness, weakness, walking limitation, imaging and western diagnosis fields.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "answers": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "pain_profile_skill",
+    "description": "Collect and tag pain location, radiation, nature, severity, aggravating and relieving factors.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "answers": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "patient_request_guard_skill",
+    "description": "Classify and block final-diagnosis/prescription/dose/self-medication requests with safe alternatives.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "user_request": {
+          "type": "string"
+        },
+        "user_role": {
+          "type": "string",
+          "enum": [
+            "patient",
+            "clinician",
+            "researcher",
+            "system"
+          ]
+        }
+      },
+      "required": [
+        "user_request"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "physician_review_skill",
+    "description": "Store a physician-authored, signed final record; rejects model-generated diagnosis/prescription/dose.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "reviewer": {
+          "type": "object"
+        },
+        "final_diagnosis": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "prescription": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "administration": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "review_notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "clinician_review_package": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state",
+        "reviewer"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician"
+      ],
+      "risk_level": "high_risk",
+      "idempotent": false,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "red_flag_screen_skill",
+    "description": "Ask and score urgent lumbar-pain red flags before any TCM inquiry.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "answers": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "report_generation_skill",
+    "description": "Generate the deterministic research/teaching report from rule engine outputs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_json": {
+          "type": "object"
+        },
+        "normalized_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "syndrome_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "formula_route": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "matched_modules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "safety": {
+          "type": "object"
+        },
+        "rule_hits": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "uncertainty": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "interaction_alerts": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "provenance": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_json",
+        "normalized_tags",
+        "syndrome_candidates",
+        "formula_route",
+        "matched_modules",
+        "conflicts",
+        "safety"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "safety_guard_skill",
+    "description": "Grade red flags (candidate → polarity → confirmed, category-tiered urgency) and screen toxic/high-risk herbs.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_json": {
+          "type": "object"
+        },
+        "matched_modules": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "normalized_tags": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "case_json"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "shen_rule_signal_skill",
+    "description": "Derive high-value Shen Qinrong rule signals from current case state.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
     }
   },
   {
@@ -44,500 +1056,23 @@
       },
       "required": [
         "normalized_tags"
-      ]
-    }
-  },
-  {
-    "name": "formula_base_selector_skill",
-    "description": "Select candidate classical formula route as non-prescriptive research signal.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "normalized_tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "syndrome_candidates": {
-          "type": "array"
-        }
-      },
-      "required": [
-        "normalized_tags",
-        "syndrome_candidates"
-      ]
-    }
-  },
-  {
-    "name": "herb_module_composer_skill",
-    "description": "Compose non-prescriptive herb modules for research explanation.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "normalized_tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "formula_route": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "normalized_tags"
-      ]
-    }
-  },
-  {
-    "name": "conflict_checker_skill",
-    "description": "Check conflicts and mutually exclusive formula routes.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "matched_modules": {
-          "type": "array"
-        },
-        "formula_route": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "matched_modules"
-      ]
-    }
-  },
-  {
-    "name": "safety_guard_skill",
-    "description": "Check medical red flags, prohibited use, toxic herbs, and clinical safety issues.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_json": {
-          "type": "object"
-        },
-        "matched_modules": {
-          "type": "array"
-        },
-        "normalized_tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        }
-      },
-      "required": [
-        "case_json"
-      ]
-    }
-  },
-  {
-    "name": "report_generation_skill",
-    "description": "Generate a research and teaching report based on rule engine outputs.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_json": {
-          "type": "object"
-        },
-        "syndrome_candidates": {
-          "type": "array"
-        },
-        "formula_route": {
-          "type": "object"
-        },
-        "matched_modules": {
-          "type": "array"
-        },
-        "conflicts": {
-          "type": "array"
-        },
-        "safety": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "case_json",
-        "syndrome_candidates",
-        "matched_modules",
-        "conflicts",
-        "safety"
-      ]
-    }
-  },
-  {
-    "name": "consent_privacy_skill",
-    "description": "Show consent/privacy notice and desensitize patient input.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "red_flag_screen_skill",
-    "description": "Ask and score urgent lumbar-pain red flags before any TCM inquiry.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "chief_complaint_skill",
-    "description": "Convert patient wording into a standard chief complaint.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "pain_profile_skill",
-    "description": "Collect and tag pain location, radiation, nature, severity, aggravating and relieving factors.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "neuro_ortho_screen_skill",
-    "description": "Collect numbness, weakness, walking limitation, imaging and western diagnosis fields.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "tcm_four_diagnosis_skill",
-    "description": "Collect patient-friendly cold/heat, dampness, qi-blood, liver-kidney, sleep, appetite, stool/urine and tongue fields.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "shen_rule_signal_skill",
-    "description": "Derive high-value Shen Qinrong rule signals from current case state.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "comorbidity_medication_skill",
-    "description": "Collect comorbidities and medications relevant to safety and rule explanation.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "adaptive_question_planner_skill",
-    "description": "Select next 1-3 high-yield questions based on safety, missing fields, rule information gain and patient burden.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "case_structuring_skill",
-    "description": "Generate a standard lumbar Bi case draft without diagnosis or prescription.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "case_quality_check_skill",
-    "description": "Score case completeness and recommend follow-up questions.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "clinician_handoff_skill",
-    "description": "Generate a concise clinician handoff summary for review.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "answers": {
-          "type": "object"
-        }
-      },
-      "required": []
-    }
-  },
-  {
-    "name": "clinician_review_package_skill",
-    "description": "Return clinician-review diagnosis hypotheses and prescription experience signals without final diagnosis, complete prescription, dose, or patient self-use instructions.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "syndrome_candidates": {
-          "type": "array"
-        },
-        "formula_routes": {
-          "type": "array"
-        },
-        "matched_modules": {
-          "type": "array"
-        },
-        "safety": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "case_state"
-      ]
-    }
-  },
-  {
-    "name": "patient_request_guard_skill",
-    "description": "Classify and block requests for final diagnosis, complete prescription, patient-executable dose, or self-medication plan; return safe clinician-review alternatives.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "user_request": {
-          "type": "string"
-        },
-        "user_role": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "user_request"
-      ]
-    }
-  },
-  {
-    "name": "create_physician_review_task",
-    "description": "Create a clinician-only review task for a licensed physician to manually enter final diagnosis, prescription, dose, administration and sign-off; the model does not generate those fields.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "clinician_review_package": {
-          "type": "object"
-        },
-        "requested_by": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "case_state"
-      ]
-    }
-  },
-  {
-    "name": "physician_review_skill",
-    "description": "Store a physician-authored and signed final diagnosis/prescription record; rejects model-generated diagnosis, complete prescription, or patient-executable dose.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "reviewer": {
-          "type": "object"
-        },
-        "final_diagnosis": {
-          "type": "object"
-        },
-        "prescription": {
-          "type": "array"
-        },
-        "administration": {
-          "type": "object"
-        },
-        "review_notes": {
-          "type": "string"
-        },
-        "clinician_review_package": {
-          "type": "object"
-        }
-      },
-      "required": [
-        "case_state",
-        "reviewer"
-      ]
-    }
-  },
-  {
-    "name": "cdss_recommendation_skill",
-    "description": "Generate clinician-facing CDSS draft diagnosis candidates and prescription strategy drafts from rule outputs; not final, not signed, not patient-visible, and no patient-executable dose.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_state": {
-          "type": "object"
-        },
-        "syndrome_candidates": {
-          "type": "array"
-        },
-        "formula_routes": {
-          "type": "array"
-        },
-        "matched_modules": {
-          "type": "array"
-        },
-        "safety": {
-          "type": "object"
-        },
-        "user_role": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "case_state"
-      ]
-    }
-  },
-  {
-    "name": "tao_report_generation_skill",
-    "description": "Generate deterministic YaoBi report plus optional Tao/Dao1 teaching overlay; model output must parse via JSON repair, pass forbidden-output guard, and falls back to deterministic report if unsafe or unavailable.",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "case_json": {
-          "type": "object"
-        },
-        "normalized_tags": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "syndrome_candidates": {
-          "type": "array"
-        },
-        "formula_route": {
-          "type": "object"
-        },
-        "matched_modules": {
-          "type": "array"
-        },
-        "conflicts": {
-          "type": "array"
-        },
-        "safety": {
-          "type": "object"
-        },
-        "rule_hits": {
-          "type": "array"
-        },
-        "use_llm": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "case_json",
-        "normalized_tags",
-        "syndrome_candidates",
-        "matched_modules",
-        "conflicts",
-        "safety"
-      ]
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "registry"
     }
   },
   {
     "name": "tao_question_planner_skill",
-    "description": "Overlay Tao reasoning on deterministic CaseGuide questions. Tao may only reorder/rewrite existing candidate question ids and add reasons; unsafe or malformed output falls back to deterministic questions.",
+    "description": "Overlay Tao reordering/rewriting on deterministic CaseGuide questions (id-constrained).",
     "parameters": {
       "type": "object",
       "properties": {
@@ -548,10 +1083,16 @@
           "type": "string"
         },
         "deterministic_questions": {
-          "type": "array"
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
         },
         "rule_context": {
-          "type": "object"
+          "type": [
+            "object",
+            "null"
+          ]
         },
         "use_llm": {
           "type": "boolean"
@@ -561,7 +1102,204 @@
         "case_state",
         "state",
         "deterministic_questions"
-      ]
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "direct"
+    }
+  },
+  {
+    "name": "tao_report_generation_skill",
+    "description": "Deterministic report plus optional guarded Tao teaching overlay (falls back to rules).",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_json": {
+          "type": "object"
+        },
+        "normalized_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "syndrome_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "formula_route": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "matched_modules": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "safety": {
+          "type": "object"
+        },
+        "rule_hits": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "use_llm": {
+          "type": "boolean"
+        },
+        "user_role": {
+          "type": "string",
+          "enum": [
+            "patient",
+            "clinician",
+            "researcher",
+            "system"
+          ]
+        },
+        "uncertainty": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "interaction_alerts": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "object"
+          }
+        },
+        "provenance": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_json",
+        "normalized_tags",
+        "syndrome_candidates",
+        "formula_route",
+        "matched_modules",
+        "conflicts",
+        "safety"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "clinical_draft",
+      "idempotent": true,
+      "execution": "direct"
+    }
+  },
+  {
+    "name": "tcm_four_diagnosis_skill",
+    "description": "Collect patient-friendly cold/heat, dampness, sleep, appetite, tongue and pulse fields.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "case_state": {
+          "type": "object"
+        },
+        "answers": {
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "case_state"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "patient",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
+    }
+  },
+  {
+    "name": "uncertainty_skill",
+    "description": "Self-assess candidate separation, abstention and missing discriminating evidence.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "syndrome_candidates": {
+          "type": "array",
+          "items": {
+            "type": "object"
+          }
+        },
+        "normalized_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "missing_fields": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "syndrome_candidates",
+        "normalized_tags"
+      ],
+      "additionalProperties": false
+    },
+    "x_governance": {
+      "allowed_roles": [
+        "clinician",
+        "researcher",
+        "system"
+      ],
+      "risk_level": "read",
+      "idempotent": true,
+      "execution": "registry"
     }
   }
 ]

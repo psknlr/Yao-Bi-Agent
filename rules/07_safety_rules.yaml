@@ -11,4 +11,13 @@ red_flags:
   anticoagulant_use: 抗凝或阿司匹林使用需关注出血与相互作用风险。
   allergy_to_herbs: 药物或中药过敏史需医生审核。
   self_medication_request: 自行购药/自服请求必须拒绝并转为医生复核建议。
+  # ---- 骨伤科急症本体 v0.10（确认即 A0 硬停止） ----
+  major_trauma: 车祸、高处坠落、挤压伤等高能量创伤需立即急诊创伤评估，保持脊柱保护。
+  open_fracture_dislocation: 开放骨折、明显畸形、关节脱位或张力性水疱需立即急诊处理。
+  neurovascular_deficit: 远端动脉搏动消失、肢体苍白发凉或新发感觉运动缺失提示血管神经损伤，立即急诊。
+  compartment_syndrome: 进行性剧痛、被动牵伸痛、张力性肿胀提示骨筋膜室综合征，立即急诊减压评估。
+  vascular_emergency: 突发撕裂样腰背痛伴腹部搏动感/冷汗需警惕主动脉急症，立即急诊。
+  cardiopulmonary_emergency: 胸痛、呼吸困难、咯血或制动后小腿肿痛伴气短需警惕肺栓塞/心肺急症，立即急诊。
+  cervical_myelopathy: 双手笨拙、踩棉花步态进行性加重提示颈髓受压，需紧急专科评估。
+  immunosuppressed_risk: 免疫抑制患者（生物制剂/长期激素）腰痛伴夜间痛或感染线索，属感染/肿瘤高风险。
 toxic_or_high_risk_herbs: [附片, 细辛, 蜈蚣, 全蝎, 制川乌, 制草乌, 乌头]

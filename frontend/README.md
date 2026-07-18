@@ -4,11 +4,23 @@
 
 ## 运行
 
+**真·Tao 在环（推荐）**——让语言模型真正自主选择并调用 skill：
+
+```bash
+pip install -e .
+TAO_BACKEND=mock python -m backend.server --port 8000   # 或 transformers / http
+# 打开 http://localhost:8000 —— 右上角显示「Tao 在线」徽章
+```
+
+**仅静态预览**（离线规则模式，前端自动回退并如实标注）：
+
 ```bash
 cd frontend
 python -m http.server 4173
 # 打开 http://localhost:4173
 ```
+
+可用 `window.YAOBI_API_BASE` 指向独立部署的后端（默认同源）。
 
 ## 页面能力
 

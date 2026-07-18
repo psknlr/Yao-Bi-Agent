@@ -2,9 +2,27 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.skills.uncertainty_skill import uncertainty_markdown
+
 
 def _join(items: list[Any]) -> str:
     return "、".join(str(item) for item in items) if items else "未提供"
+
+
+def _interaction_lines(interaction_alerts: list[dict[str, Any]] | None) -> str:
+    """Tiered rendering: interruptive alerts first (需医师双签确认), then advisory."""
+
+    alerts = interaction_alerts or []
+    if not alerts:
+        return ""
+    interruptive = [a for a in alerts if a.get("alert_level") == "interruptive"]
+    advisory = [a for a in alerts if a.get("alert_level") != "interruptive"]
+    lines: list[str] = ["", "药物相互作用与合并病禁忌（分级告警）："]
+    for a in interruptive:
+        lines.append(f"- 🔴 **需医师确认**：{a.get('description')}（处理：{a.get('resolution')}）")
+    for a in advisory:
+        lines.append(f"- 🟡 提示：{a.get('description')}（处理：{a.get('resolution')}）")
+    return "\n".join(lines)
 
 
 def report_generation_skill(
@@ -16,6 +34,9 @@ def report_generation_skill(
     conflicts: list[dict[str, Any]],
     safety: dict[str, Any],
     rule_hits: list[dict[str, Any]] | None = None,
+    uncertainty: dict[str, Any] | None = None,
+    interaction_alerts: list[dict[str, Any]] | None = None,
+    provenance: dict[str, Any] | None = None,
 ) -> dict[str, str]:
     syndrome_rows = "\n".join(
         f"| {c['name']} | {c['score']} | {_join(c.get('evidence_tags', []))} | {c['confidence']} |"
@@ -34,6 +55,16 @@ def report_generation_skill(
     risk_lines = "\n".join(f"- {r}" for r in safety.get("medication_risks", [])) or "- 未见已命中特殊药物风险；仍需医生复核。"
     route_text = formula_route.get("name") if formula_route else "未形成稳定路线"
     route_reason = formula_route.get("rationale") if formula_route else "信息不足，需补充问诊与医生复核。"
+    uncertainty_block = ("\n" + uncertainty_markdown(uncertainty) + "\n") if uncertainty else ""
+    interaction_block = _interaction_lines(interaction_alerts)
+    provenance_line = ""
+    if provenance:
+        provenance_line = (
+            "\n---\n**决策出处（Provenance）**："
+            f"规则库版本 `{provenance.get('rules_version', 'unknown')}` · "
+            f"应用版本 `{provenance.get('app_version', 'unknown')}` · "
+            "决策基础：确定性规则优先，模型仅作守卫后的解释叠加。\n"
+        )
     report = f"""# 沈钦荣腰痹经验规则分析报告
 
 ## 1. 医案摘要
@@ -51,7 +82,7 @@ def report_generation_skill(
 | 证型 | 得分 | 命中证据 | 置信度 |
 |---|---:|---|---|
 {syndrome_rows}
-
+{uncertainty_block}
 ## 4. 方剂路线（经验规则线索，非处方）
 - 主路线：{route_text}
 - 选择理由：{route_reason}
@@ -66,7 +97,7 @@ def report_generation_skill(
 {module_rows}
 
 ## 7. 互斥/冲突与安全提醒
-{conflict_lines}
+{conflict_lines}{interaction_block}
 
 ## 8. 红旗与用药风险
 红旗线索：
@@ -83,5 +114,5 @@ def report_generation_skill(
 
 ## 11. 免责声明
 {safety.get('disclaimer', '本结果仅用于名老中医经验研究、医案复盘与教学讨论，不构成诊断、处方或治疗建议。')}
-"""
+{provenance_line}"""
     return {"markdown_report": report}
