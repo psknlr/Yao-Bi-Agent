@@ -1,6 +1,6 @@
 # Colab 一键复现 · 真·Tao 在环 UI（含 ngrok 公网）
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/pariskang/Yao-Bi-Agent/blob/claude/focused-planck-3dv9we/colab/YaoBi_Skill_Colab.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/psknlr/Yao-Bi-Agent/blob/claude/cdss-agent-code-review-vain2f/colab/YaoBi_Skill_Colab.ipynb)
 
 [`YaoBi_Skill_Colab.ipynb`](YaoBi_Skill_Colab.ipynb) 在 Google Colab 上一键复现全部功能，**前端 UI 通过后端 API 真正调用语言模型（Tao）自主选择并调用 skill、自主问诊**，并经 **ngrok** 暴露为公网链接。
 
