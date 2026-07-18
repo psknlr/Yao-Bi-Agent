@@ -49,7 +49,11 @@
             <h2 id="pageTitle">自动导引患者生成标准腰痹医案</h2>
           </div>
           <div class="topbar-actions">
-            <button id="doctorModeBtn" class="ghost-btn" type="button">医生/研究者模式</button>
+            <div id="roleSwitch" class="role-switch" role="group" aria-label="使用者模式">
+              <button class="role-pill" data-usermode="patient" type="button">患者</button>
+              <button class="role-pill" data-usermode="physician" type="button">医生</button>
+              <button class="role-pill" data-usermode="researcher" type="button">研究者</button>
+            </div>
             <button id="exportJsonBtn" class="primary-btn" type="button">导出 JSON</button>
           </div>
         </header>

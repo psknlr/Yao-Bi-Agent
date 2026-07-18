@@ -96,7 +96,21 @@ h1 { font-size: 19px; margin: 0; letter-spacing: .01em; }
 .main-panel { padding: 26px 32px 40px; min-width: 0; }
 .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
 .topbar h2 { font-size: 23px; margin: 0; letter-spacing: -.01em; line-height: 1.3; }
-.topbar-actions { display: flex; gap: 10px; flex: none; }
+.topbar-actions { display: flex; gap: 10px; flex: none; align-items: center; }
+/* Three-way role selector (患者 / 医生 / 研究者): the active mode is always visible,
+   and physician vs researcher are distinct selections, not one combined toggle. */
+.role-switch { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 10px; overflow: hidden; background: var(--panel); }
+.role-pill { border: 0; background: transparent; color: var(--ink-2); padding: 9px 14px; font-weight: 700; font-size: 13px; cursor: pointer; transition: background .12s ease, color .12s ease; border-right: 1px solid var(--line-strong); }
+.role-pill:last-child { border-right: 0; }
+.role-pill:hover { color: var(--brand); }
+.role-pill.active { color: #fff; }
+.role-pill[data-usermode="patient"].active { background: #2f7d5b; }
+.role-pill[data-usermode="physician"].active { background: var(--brand); }
+.role-pill[data-usermode="researcher"].active { background: #6b4bb0; }
+.role-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; margin: 0 0 16px; font-size: 13px; font-weight: 600; border: 1px solid var(--line-strong); }
+.role-banner.physician { background: var(--brand-soft); color: var(--brand); border-color: #ecd5cb; }
+.role-banner.researcher { background: #f1ecfa; color: #6b4bb0; border-color: #ddd2f0; }
+.role-banner.patient { background: #eaf5ef; color: #2f7d5b; border-color: #cfe7da; }
 .screen { min-height: calc(100vh - 140px); }
 
 .primary-btn, .ghost-btn, .danger-btn { border: 0; border-radius: 10px; padding: 10px 16px; font-weight: 700; font-size: 13.5px; letter-spacing: .01em; transition: transform .1s ease, box-shadow .15s ease; }

@@ -53,9 +53,15 @@ function casePayload(extra = {}) {
   return {
     tags: c.tags,
     red_flags: { status: c.red.status, positive_items: c.red.positives },
+    // Chief complaint (built from the intake answers) gives the case-directed endpoints
+    // (/api/reasoning, /api/summary, /api/collaboration) a lumbar anchor. Without it the
+    // server scope-gate blocks them to "未识别到腰痹相关主诉" and the model is never
+    // invoked — which looks like "poe/minimax/azure don't support these modes".
+    chief_complaint: { standard_text: c.chief, main_symptom: state.answers.main_symptom || '腰痛' },
     // Intake comorbidity answers feed the server-side herb-drug / contraindication checker.
     comorbidity: { diseases: asList(state.answers.diseases), medications: asList(state.answers.medications) },
     doctor_mode: state.doctorMode,
+    user_mode: state.userMode,
     ...extra,
   };
 }
@@ -118,6 +124,7 @@ function submitFeedback(holder, target, extra, rerender) {
     target,
     reason: fb.reason || '',
     doctor_mode: state.doctorMode,
+    user_mode: state.userMode,
     ...extra,
   }).catch(() => {});
   rerender();
@@ -235,7 +242,11 @@ const state = {
   // Least privilege by default: the UI starts in patient mode; clinician mode is an
   // explicit opt-in, and the backend independently re-verifies the role server-side
   // (YAOBI_CLINICIAN_TOKEN) — the client can only request it, never grant it.
-  doctorMode: false,
+  // userMode is the three-way professional context: 'patient' | 'physician' | 'researcher'.
+  // doctorMode (clinician-vs-patient, the security-relevant boolean) is kept in sync.
+  userMode: localStorage.getItem('yaobi-user-mode') || 'patient',
+  get doctorMode() { return this.userMode !== 'patient'; },
+  set doctorMode(v) { this.userMode = v ? (this.userMode === 'patient' ? 'physician' : this.userMode) : 'patient'; },
   chat: { history: [] },
   intakeMode: localStorage.getItem('yaobi-intake-mode') || 'chat',
   interview: null,
@@ -378,9 +389,42 @@ function renderModuleNav() {
 function intakeMode() { return state.intakeMode === 'form' ? 'form' : 'chat'; }
 function setIntakeMode(mode) { state.intakeMode = mode; localStorage.setItem('yaobi-intake-mode', mode); render(); }
 
+const ROLE_META = {
+  patient:    { label: '患者', desc: '患者简洁视图：只显示对就医有帮助的信息；不显示候选诊断、方药草案或可执行剂量。' },
+  physician:  { label: '医生', desc: '临床决策视图：可见 CDSS 候选诊断/证型/方药草案与经验证据；红旗急诊评估可由执业医师确认 / 修订 / 覆盖并签署。' },
+  researcher: { label: '研究者', desc: '科研教学视图：可见 CDSS 草案与脱敏经验规律用于研究复盘；红旗急诊评估的签署仅限执业医师，本视图为只读。' },
+};
+
+function setUserMode(mode) {
+  if (!ROLE_META[mode]) mode = 'patient';
+  state.userMode = mode;
+  localStorage.setItem('yaobi-user-mode', mode);
+  render();
+}
+
+// Reflect the active professional context: the selected pill and a banner that
+// visibly differs between 患者 / 医生 / 研究者 (the previous single toggle only fired
+// an alert and never changed the UI).
+function syncRoleUI() {
+  document.querySelectorAll('#roleSwitch .role-pill').forEach(b =>
+    b.classList.toggle('active', b.dataset.usermode === state.userMode));
+  let banner = document.querySelector('#roleBanner');
+  if (!banner) {
+    const screen = document.querySelector('#screen');
+    if (!screen || !screen.parentNode) return;
+    banner = document.createElement('div');
+    banner.id = 'roleBanner';
+    screen.parentNode.insertBefore(banner, screen);
+  }
+  const meta = ROLE_META[state.userMode] || ROLE_META.patient;
+  banner.className = 'role-banner ' + state.userMode;
+  banner.innerHTML = `<span>当前模式：<strong>${meta.label}</strong></span><span class="muted">${meta.desc}</span>`;
+}
+
 function render() {
   renderModuleNav();
   renderTaoBadge();
+  syncRoleUI();
   const intake = state.module === 'intake';
   const chatIntake = intake && intakeMode() === 'chat';
   document.querySelector('#stepper').style.display = (intake && !chatIntake) ? '' : 'none';
@@ -461,7 +505,7 @@ async function interviewReview(action, notes) {
   iv.pending = true;
   renderConversationalInterview();
   try {
-    const body = { session_id: iv.sessionId, review_action: action, doctor_mode: state.doctorMode, reviewer_id: iv.reviewerId || '' };
+    const body = { session_id: iv.sessionId, review_action: action, doctor_mode: state.doctorMode, user_mode: state.userMode, reviewer_id: iv.reviewerId || '' };
     if (action === 'override') {
       body.override_reason = notes;
     } else {
@@ -554,13 +598,16 @@ function renderConversationalInterview() {
       ${(info.target_slots || []).length ? `<h4>本轮关注</h4><div class="chip-cloud">${info.target_slots.map(s => `<span class="chip">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
     </section>`;
 
-  // Physician review panel — only in doctor_mode when the FSM has halted on a safety referral
-  // and the physician hasn't reviewed yet.
-  const needsReview = state.doctorMode && info.physician_review_required && info.state === 'SAFETY_REFERRAL';
+  // Physician review panel — appears when the FSM halts on a safety referral. Sign-off
+  // (confirm / revise / override) is a licensed-physician act, so it is actionable only
+  // in 医生 mode; 研究者 mode sees the same referral guidance read-only. Patients never
+  // see it. The backend independently rejects a researcher-declared sign-off.
+  const referralPending = state.doctorMode && info.physician_review_required && info.state === 'SAFETY_REFERRAL';
+  const canSignoff = referralPending && state.userMode === 'physician';
   const taoguidance = info.referral_tao_guidance || '';
-  const reviewPanel = needsReview ? `
+  const reviewPanel = canSignoff ? `
     <section class="result-panel physician-review-panel">
-      <p class="eyebrow">PHYSICIAN_REVIEW · doctor_mode · 仅执业医师可见</p>
+      <p class="eyebrow">PHYSICIAN_REVIEW · 医生模式 · 仅执业医师可签署</p>
       <h3>医师审核转诊建议</h3>
       <p>系统已检测到危险信号并暂停问诊。请选择处置方式：</p>
       ${taoguidance ? `<details class="tao-guidance-details"><summary><strong>Tao 急诊转诊参考（供医师参考）</strong></summary><div class="bot-body">${mdLite(taoguidance)}</div></details>` : ''}
@@ -574,7 +621,13 @@ function renderConversationalInterview() {
         <textarea id="ivNotes" class="free-note" placeholder="请输入医师备注（必填）…" rows="3"></textarea>
         <button class="primary-btn" id="ivSubmitNotes">提交</button>
       </div>
-    </section>` : '';
+    </section>` : (referralPending ? `
+    <section class="result-panel physician-review-panel">
+      <p class="eyebrow">PHYSICIAN_REVIEW · 研究者模式 · 只读</p>
+      <h3>医师审核转诊建议（研究者视图）</h3>
+      <p class="muted">系统已检测到危险信号并暂停问诊。红旗急诊评估的确认 / 修订 / 覆盖属执业医师签署行为，<strong>研究者视图为只读</strong>；如需签署请切换至「医生」模式。</p>
+      ${taoguidance ? `<details class="tao-guidance-details" open><summary><strong>Tao 急诊转诊参考（供研究参考）</strong></summary><div class="bot-body">${mdLite(taoguidance)}</div></details>` : ''}
+    </section>` : '');
 
   screen.innerHTML = `
     <div class="intake-switch">
@@ -1545,7 +1598,11 @@ function renderSettingsModule() {
   });
 }
 
-document.querySelector('#doctorModeBtn').addEventListener('click', () => { state.doctorMode = !state.doctorMode; alert(state.doctorMode ? '已进入医生/研究者模式' : '已进入患者简洁模式'); });
+// Three-way role selector: each pill sets the mode and re-renders so the whole UI
+// reflects it (banner, CDSS visibility, physician sign-off) — the old single button
+// only popped an alert and left the UI unchanged.
+document.querySelectorAll('#roleSwitch .role-pill').forEach(btn =>
+  btn.addEventListener('click', () => setUserMode(btn.dataset.usermode)));
 document.querySelector('#exportJsonBtn').addEventListener('click', () => download('yaobi-case.json', JSON.stringify(buildReport().json, null, 2)));
 render(); updatePreview(); renderTaoBadge();
 

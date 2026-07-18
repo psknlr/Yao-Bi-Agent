@@ -99,6 +99,21 @@ def _case_state(data: dict[str, Any]) -> dict[str, Any]:
         "neuro_ortho": data.get("neuro_ortho") or {},
         "comorbidity": data.get("comorbidity") or {},
     }
+    # Chief complaint is CASE data (the patient's own stated complaint from intake), not
+    # authorization data — accept it (bounded) so the case-directed endpoints
+    # (/api/reasoning, /api/summary, /api/collaboration) carry a lumbar anchor. Without
+    # it those modes have only tags and get scope-gated to "未识别到腰痹相关主诉" before
+    # the model is ever called — which read as "provider backends don't support these
+    # modes". The scope gate still re-derives from tags; this only ADDS a legitimate
+    # anchor, it cannot force out-of-domain content (a non-lumbar chief text won't match).
+    chief = data.get("chief_complaint")
+    if isinstance(chief, dict):
+        state["chief_complaint"] = {
+            "standard_text": str(chief.get("standard_text") or "")[:200],
+            "main_symptom": str(chief.get("main_symptom") or "")[:80],
+        }
+    elif isinstance(chief, str) and chief.strip():
+        state["chief_complaint"] = {"standard_text": chief[:200]}
     # SERVER-AUTHORITATIVE fields (v0.14): a scope decision is authorization data,
     # not case data — it only travels when computed server-side by
     # _enrich_with_question (marked _scope_source="server"). A client-supplied
@@ -490,6 +505,17 @@ def handle_interview(data: dict[str, Any]) -> dict[str, Any]:
             denied = _clinician_only(data)
             if denied:
                 return {**denied, "session_id": session_id, "tao": tao_info()}
+            # Professional-context gate (defense-in-depth on top of the clinician token):
+            # confirming / revising / overriding a red-flag referral is a licensed-physician
+            # sign-off. A caller operating in the researcher view must not sign — the UI
+            # already makes it read-only; the server rejects it too and audits the attempt.
+            if str(data.get("user_mode") or "") == "researcher":
+                AUDIT.record("researcher_signoff_blocked", {"session_id": session_id, "action": review_action})
+                return {
+                    "ok": False, "error": "physician_signoff_required",
+                    "message": "红旗急诊评估的确认/修订/覆盖属执业医师签署行为，研究者视图为只读；请切换至医生模式。",
+                    "session_id": session_id, "tao": tao_info(),
+                }
             # Reviewer identity comes from the AUTHENTICATED subject, never from the
             # request body — a body reviewer_id is recorded as a claim in the audit
             # trail but cannot decide who the reviewer is (v0.12 P0).
